@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Workloads Status</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7fafc;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+        }
+
+        .container {
+            width: 90%;
+            max-width: 840px;
+        }
+
+        .refresh-btn {
+            background-color: #3182ce;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: block;
+            margin: 0 auto 16px auto;
+        }
+
+        .refresh-btn:hover {
+            background-color: #2c5282;
+        }
+
+        .status-200::before {
+            content: "✅";
+            color: green;
+            margin-right: 5px;
+        }
+
+        .status-401::before {
+            content: "❗";
+            color: orange;
+            margin-right: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        th {
+            background-color: #f7fafc;
+        }
+
+        tr:nth-child(even) {
+            background-color: #e2e8f0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Kubernetes Workloads Status</h1>
+        <tr>
+            <td>
+                <button onclick="applyBulkActionDown()" class="refresh-btn">Shutdown Selected</button>
+                <button onclick="applyBulkActionUp()" class="refresh-btn">Scale up Selected</button>
+            </td>
+        </tr>
+        <h2>Deployments</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>Name</th>
+                    <th>Namespace</th>
+                    <th>Replicas</th>
+                    <th>Available</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in deploy %}
+                <tr>
+                    <td><input type="checkbox" name="selectedWorkloads" value="d_{{ d.name }}_{{ d.namespace }}">
+                    </td>
+                    <td>{{ d.name }}</td>
+                    <td>{{ d.namespace }}</td>
+                    <td>{{ d.replicas }}</td>
+                    <td>{{ d.available_replicas }}</td>
+                    <td>
+                        <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')">Shutdown</button>
+                        <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')">Scale Up</button>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% for s in sts %}
+                <tr style="color: #3182ce; background-color:aquamarine">
+                    <td><input type="checkbox" name="selectedWorkloads" value="s_{{ s.name }}_{{ s.namespace }}">
+                    </td>
+                    <td>{{ s.name }}</td>
+                    <td>{{ s.namespace }}</td>
+                    <td>{{ s.replicas }}</td>
+                    <td>{{ s.available_replicas }}</td>
+                    <td>
+                        <button onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'down')">Shutdown</button>
+                        <button onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'up')">Scale Up</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <!-- Repeat for Pods with similar structure -->
+    </div>
+    <script>
+        function scale(type, name, namespace, action) {
+            let url = `/manage/${type}/${namespace}/${name}`;
+            // Check the action to construct the appropriate URL
+            if (action === 'down') {
+                // For shutdown, target the /shutdown route
+                url = `/manage/${type}/${namespace}/${name}/0`;
+            } else if (action === 'up') {
+                // Assuming there's another route for scaling up
+                // Replace this with the actual URL if you implement scaling up
+                url = `/manage/${type}/${namespace}/${name}/1`;
+            }
+
+            // Fetch API to send a request to the FastAPI backend
+            fetch(url, { method: 'GET' })
+                .then(response => response.json())
+                .then(data => alert(data.message))
+                .catch(error => console.error('Error:', error));
+        }
+
+
+        function applyBulkActionUp() {
+            // Gathering selected workloads
+            let selectedWorkloads = document.querySelectorAll('input[name="selectedWorkloads"]:checked');
+            let workloadDetails = Array.from(selectedWorkloads).map((workload) => workload.value);
+
+            // Assuming a backend endpoint exists to handle bulk actions
+            fetch('/up-all', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ workloads: workloadDetails }),
+            })
+                .then(response => response.json())
+                .then(data => alert(data.message))
+                .catch(error => console.error('Error:', error));
+        }
+
+    </script>
+</body>
+
+</html>
