@@ -78,40 +78,71 @@ def get_argocd_session_token():
         return None
 
 
-@app.post("/shutdown-all")
-async def scale_down_all_deployments(request: Request, workloads: Workloads):
-    for workload in workloads.workloads:
-        # Expected workload format: "deploymentName_namespace"
-        details = workload.split("_")
-        logger.info(f"Scaling down workload: {workload}")
-        if len(details) != 2:
-            logger.error(f"Invalid workload format: {workload}")
-            continue  # Skip invalidly formatted workloads
+@app.get("/manage-all/{mode}")
+async def manage_all_deployments(mode: str) -> Dict[str, Any]:
+    logger.info("Received request to manage all workloads.")
+    logger.info(f"mode: {mode}")
+    try:
+        deployment = apps_v1.list_deployment_for_all_namespaces(watch=False)
+        deployment_list = [
+            {
+                "namespace": d.metadata.namespace,
+                "name": d.metadata.name,
+                "replicas": d.status.replicas,
+                "available_replicas": d.status.available_replicas,
+                "ready_replicas": d.status.ready_replicas,
+                "labels": d.metadata.labels,
+            }
+            for d in deployment.items
+            if d.metadata.namespace not in protected_namespaces
+            if "argocd.argoproj.io/instance" in d.metadata.labels
+        ]
 
-        # shutdown_app("deploy", details[1], details[0])
+        sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
+        sts_list = [
+            {
+                "namespace": s.metadata.namespace,
+                "name": s.metadata.name,
+                "replicas": s.status.replicas,
+                "available_replicas": s.status.available_replicas,
+                "ready_replicas": s.status.ready_replicas,
+                "labels": s.metadata.labels,
+            }
+            for s in sts.items
+            if s.metadata.namespace not in protected_namespaces
+            if "argocd.argoproj.io/instance" in s.metadata.labels
+        ]
+        for deploy in deployment_list:
+            if mode == "down":
+                logger.info(
+                    f"Scaling down deploy '{deploy['name']}' in namespace '{deploy['namespace']}'"
+                )
 
-    # For simplicity, this example responds with a success message regardless of individual failures
-    return {
-        "message": "Bulk action to scale down deployments initiated. Check logs for individual action results."
-    }
+                await shutdown_app("deploy", deploy["namespace"], deploy["name"])
+            elif mode == "up":
+                logger.info(
+                    f"Scaling up deploy '{deploy['name']}' in namespace '{deploy['namespace']}'"
+                )
+                await scale_up_app("deploy", deploy["namespace"], deploy["name"])
 
+        for sts in sts_list:
+            if mode == "down":
+                logger.info(
+                    f"Scaling down StatefulSet '{sts['name']}' in namespace '{sts['namespace']}'"
+                )
 
-@app.post("/scale-up-all")
-async def scale_up_all_deployments(request: Request, workloads: Workloads):
-    for workload in workloads.workloads:
-        # Expected workload format: "deploymentName_namespace"
-        details = workload.split("_")
-        logger.info(f"Scaling up workload: {workload}")
-        if len(details) != 2:
-            logger.error(f"Invalid workload format: {workload}")
-            continue  # Skip invalidly formatted workloads
-
-        # shutdown_app("deploy", details[1], details[0])
-
-    # For simplicity, this example responds with a success message regardless of individual failures
-    return {
-        "message": "Bulk action to scale down deployments initiated. Check logs for individual action results."
-    }
+                await shutdown_app("sts", sts["namespace"], sts["name"])
+            elif mode == "up":
+                logger.info(
+                    f"Scaling up StatefulSet '{sts['name']}' in namespace '{sts['namespace']}'"
+                )
+                await scale_up_app("sts", sts["namespace"], sts["name"])
+        # For simplicity, this example responds with a success message regardless of individual failures
+        return {
+            "message": "Bulk action to scale down deployments initiated. Check logs for individual action results."
+        }
+    except Exception as e:
+        logger.error(f"Error while scaling down all workload Error: {e}")
 
 
 @app.get("/shutdown/{resource_type}/{namespace}/{name}")

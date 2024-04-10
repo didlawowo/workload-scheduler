@@ -105,8 +105,8 @@
         </div>
         <tr>
             <td>
-                <button onclick="applyBulkAction('down')" class="button-down">Shutdown All</button>
-                <button onclick="applyBulkAction('up')" class="button-up">Scale Up All</button>
+                <button onclick="scale('','','','down-all')" class="button-down">Shutdown All</button>
+                <button onclick="scale('','','','up-all')" class="button-up">Scale Up All</button>
             </td>
         </tr>
         <h2>Deployments</h2>
@@ -182,8 +182,12 @@
                 // Assuming there's another route for scaling up
                 // Replace this with the actual URL if you implement scaling up
                 url = `/up/${type}/${namespace}/${name}`;
+            } else if (action === 'down-all') {
+                // For bulk actions, target the /bulk route
+                url = `/manage-all/down`;
+            } else if (action === 'up-all') {
+                url = `/manage-all/up`;
             }
-
             // Fetch API to send a request to the FastAPI backend
             fetch(url, { method: 'GET' })
                 .then(response => response.json())
@@ -192,26 +196,6 @@
                 })
                 .catch(error => console.error('Error:', error));
         }
-
-
-        function applyBulkAction(number) {
-            // Gathering selected workloads
-            let selectedWorkloads = document.querySelectorAll('input[name="selectedWorkloads"]:checked');
-            let workloadDetails = Array.from(selectedWorkloads).map((workload) => workload.value);
-
-            // Assuming a backend endpoint exists to handle bulk actions
-            fetch(`/manage-all/${number}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ workloads: workloadDetails }),
-            })
-                .then(response => response.json())
-                .then(data => alert(data.message))
-                .catch(error => console.error('Error:', error));
-        }
-
 
 
         document.addEventListener("DOMContentLoaded", function () {
