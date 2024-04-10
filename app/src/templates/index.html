@@ -6,6 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kubernetes Workloads Status</title>
     <style>
+        #progressBarContainer {
+            width: 100%;
+            background-color: #ddd;
+        }
+
+        #progressBar {
+            width: 1%;
+            height: 30px;
+            background-color: #4CAF50;
+        }
+
+        /* Initially hide the progress bar */
+        .hidden {
+            display: none;
+        }
+
         body {
             font-family: Arial, sans-serif;
             background-color: #f7fafc;
@@ -18,7 +34,7 @@
 
         .container {
             width: 90%;
-            max-width: 840px;
+            max-width: 1040px;
         }
 
         .refresh-btn {
@@ -29,25 +45,35 @@
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            display: block;
+            display: inline;
             margin: 0 auto 16px auto;
         }
 
-        .refresh-btn:hover {
-            background-color: #2c5282;
+        .button-up {
+            background-color: #38a169;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline;
+            margin: 0 auto 16px auto;
         }
 
-        .status-200::before {
-            content: "✅";
-            color: green;
-            margin-right: 5px;
+        .button-down {
+            background-color: #b6312d;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline;
+            margin: 0 auto 16px auto;
         }
 
-        .status-401::before {
-            content: "❗";
-            color: orange;
-            margin-right: 5px;
-        }
+
 
         table {
             width: 100%;
@@ -73,52 +99,71 @@
 
 <body>
     <div class="container">
-        <h1>Kubernetes Workloads Status</h1>
+        <h1>Kubernetes Workloads Manager</h1>
+        <div id="progressBarContainer" class="hidden">
+            <div id="progressBar"></div>
+        </div>
         <tr>
             <td>
-                <button onclick="applyBulkActionDown()" class="refresh-btn">Shutdown Selected</button>
-                <button onclick="applyBulkActionUp()" class="refresh-btn">Scale up Selected</button>
+                <button onclick="applyBulkAction('down')" class="button-down">Shutdown All</button>
+                <button onclick="applyBulkAction('up')" class="button-up">Scale Up All</button>
             </td>
         </tr>
         <h2>Deployments</h2>
         <table>
             <thead>
+                <p>There are {{ deploy|length }} deployments in the cluster.</p>
                 <tr>
-                    <th>Select</th>
+
                     <th>Name</th>
                     <th>Namespace</th>
                     <th>Replicas</th>
                     <th>Available</th>
+                    <th>Labels</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for d in deploy %}
                 <tr>
-                    <td><input type="checkbox" name="selectedWorkloads" value="d_{{ d.name }}_{{ d.namespace }}">
-                    </td>
+                    <!-- <td><input type="checkbox" name="selectedWorkloads" value="d_{{ d.name }}_{{ d.namespace }}">
+                    </td> -->
                     <td>{{ d.name }}</td>
                     <td>{{ d.namespace }}</td>
                     <td>{{ d.replicas }}</td>
                     <td>{{ d.available_replicas }}</td>
+                    <td>{{ d.labels }}</td>
                     <td>
-                        <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')">Shutdown</button>
-                        <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')">Scale Up</button>
+                        <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                            class="button-down">Shutdown</button>
+                        <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
+                            class="button-up">Scale Up</button>
+
                     </td>
                 </tr>
                 {% endfor %}
+            </tbody>
+        </table>
+        <h2>statefulset</h2>
+        <table>
+            <tbody>
+
+                <p>There are {{ sts|length }} statefulset in the cluster.</p>
 
                 {% for s in sts %}
-                <tr style="color: #3182ce; background-color:aquamarine">
-                    <td><input type="checkbox" name="selectedWorkloads" value="s_{{ s.name }}_{{ s.namespace }}">
-                    </td>
+                <tr>
+                    <!-- <td><input type=" checkbox" name="selectedWorkloads" value="s_{{ s.name }}_{{ s.namespace }}">
+                    </td> -->
                     <td>{{ s.name }}</td>
                     <td>{{ s.namespace }}</td>
                     <td>{{ s.replicas }}</td>
                     <td>{{ s.available_replicas }}</td>
+                    <td>{{ s.labels }}</td>
                     <td>
-                        <button onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'down')">Shutdown</button>
-                        <button onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'up')">Scale Up</button>
+                        <button class="button-down"
+                            onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'down')">Shutdown</button>
+                        <button class="button-up"
+                            onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'up')">Scale Up</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -128,32 +173,34 @@
     </div>
     <script>
         function scale(type, name, namespace, action) {
-            let url = `/manage/${type}/${namespace}/${name}`;
+            let url = ``;
             // Check the action to construct the appropriate URL
             if (action === 'down') {
                 // For shutdown, target the /shutdown route
-                url = `/manage/${type}/${namespace}/${name}/0`;
+                url = `/shutdown/${type}/${namespace}/${name}`;
             } else if (action === 'up') {
                 // Assuming there's another route for scaling up
                 // Replace this with the actual URL if you implement scaling up
-                url = `/manage/${type}/${namespace}/${name}/1`;
+                url = `/up/${type}/${namespace}/${name}`;
             }
 
             // Fetch API to send a request to the FastAPI backend
             fetch(url, { method: 'GET' })
                 .then(response => response.json())
-                .then(data => alert(data.message))
+                .then(data => {
+                    window.location.reload(); // Refresh the page after the action
+                })
                 .catch(error => console.error('Error:', error));
         }
 
 
-        function applyBulkActionUp() {
+        function applyBulkAction(number) {
             // Gathering selected workloads
             let selectedWorkloads = document.querySelectorAll('input[name="selectedWorkloads"]:checked');
             let workloadDetails = Array.from(selectedWorkloads).map((workload) => workload.value);
 
             // Assuming a backend endpoint exists to handle bulk actions
-            fetch('/up-all', {
+            fetch(`/manage-all/${number}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -165,7 +212,33 @@
                 .catch(error => console.error('Error:', error));
         }
 
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            var progressBar = document.getElementById("progressBar");
+            var width = 1;
+            var progressBarContainer = document.getElementById("progressBarContainer");
+            progressBarContainer.classList.remove("hidden");
+
+            var interval = setInterval(function () {
+                if (width >= 100) {
+                    clearInterval(interval);
+                    // Hide the progress bar container
+                    progressBarContainer.classList.add("hidden");
+                } else {
+                    width++;
+                    progressBar.style.width = width + '%';
+                }
+            }, 10); // Adjust the speed as necessary
+        });
+
+        function pageLoaded() {
+            // This function is called once the page is fully loaded
+            // Hide the progress bar immediately, or adjust based on actual load status
+            document.getElementById("progressBarContainer").classList.add("hidden");
+        }
     </script>
+
 </body>
 
 </html>
