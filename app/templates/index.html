@@ -119,7 +119,7 @@
                     <th>Namespace</th>
                     <th>Replicas</th>
                     <th>Available</th>
-                    <th>Labels</th>
+                    <!-- <th>Labels</th> -->
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -132,7 +132,7 @@
                     <td>{{ d.namespace }}</td>
                     <td>{{ d.replicas }}</td>
                     <td>{{ d.available_replicas }}</td>
-                    <td>{{ d.labels }}</td>
+                    <!-- <td>{{ d.labels }}</td> -->
                     <td>
                         <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
                             class="button-down">Shutdown</button>
@@ -158,7 +158,7 @@
                     <td>{{ s.namespace }}</td>
                     <td>{{ s.replicas }}</td>
                     <td>{{ s.available_replicas }}</td>
-                    <td>{{ s.labels }}</td>
+                    <!-- <td>{{ s.labels }}</td> -->
                     <td>
                         <button class="button-down"
                             onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'down')">Shutdown</button>

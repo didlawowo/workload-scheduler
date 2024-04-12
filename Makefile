@@ -16,4 +16,8 @@ export $(shell sed 's/=.*//' .envrc)
 
 start-dev:  ## start app
 	@echo "starting dev app"
-	@cd app/src && pipenv run python app.py
+	@cd app && pipenv run python app.py
+
+build:  ## build container
+	@echo "starting dev app"
+	@cd app && docker-compose build --push

@@ -46,7 +46,7 @@ class Workloads(BaseModel):
     workloads: List[str]
 
 
-ARGOCD_API_URL = "http://kube-infra-tailscale-argo.taildd04c.ts.net/api/v1"
+ARGOCD_API_URL = os.getenv("ARGOCD_API_URL", "http://localhost:8080/api/v1")
 USERNAME = os.getenv("ARGOCD_USERNAME", "admin")
 PASSWORD = os.getenv("ARGOCD_PASSWORD", "admin")
 

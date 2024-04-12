@@ -9,4 +9,4 @@ COPY . /app
 
 EXPOSE 8000
 
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "app:app", "--timeout 200"]
+CMD ["uvicorn",   "app:app", "--host", "0.0.0.0"]
