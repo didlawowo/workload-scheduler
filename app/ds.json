@@ -1,0 +1,159 @@
+[
+    {
+        "namespace": "contour",
+        "name": "contour-envoy",
+        "labels": {
+            "app.kubernetes.io/component": "envoy",
+            "app.kubernetes.io/instance": "contour",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "contour",
+            "app.kubernetes.io/version": "1.29.4",
+            "argocd.argoproj.io/instance": "contour",
+            "helm.sh/chart": "contour-17.0.9"
+        }
+    },
+    {
+        "namespace": "kube-infra",
+        "name": "gpu-feature-discovery",
+        "labels": {
+            "app": "gpu-feature-discovery",
+            "app.kubernetes.io/managed-by": "gpu-operator",
+            "app.kubernetes.io/part-of": "nvidia-gpu",
+            "helm.sh/chart": "gpu-operator-v23.9.2"
+        }
+    },
+    {
+        "namespace": "kube-infra",
+        "name": "gpu-operator-node-feature-discovery-worker",
+        "labels": {
+            "app.kubernetes.io/instance": "gpu-operator",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "node-feature-discovery",
+            "app.kubernetes.io/version": "v0.14.2",
+            "argocd.argoproj.io/instance": "gpu-operator",
+            "helm.sh/chart": "node-feature-discovery-0.14.2",
+            "role": "worker"
+        }
+    },
+    {
+        "namespace": "kube-infra",
+        "name": "nvidia-container-toolkit-daemonset",
+        "labels": {
+            "app": "nvidia-container-toolkit-daemonset",
+            "app.kubernetes.io/managed-by": "gpu-operator",
+            "helm.sh/chart": "gpu-operator-v23.9.2"
+        }
+    },
+    {
+        "namespace": "kube-infra",
+        "name": "nvidia-dcgm",
+        "labels": {
+            "app": "nvidia-dcgm",
+            "app.kubernetes.io/managed-by": "gpu-operator",
+            "helm.sh/chart": "gpu-operator-v23.9.2"
+        }
+    },
+    {
+        "namespace": "kube-infra",
+        "name": "nvidia-dcgm-exporter",
+        "labels": {
+            "app": "nvidia-dcgm-exporter",
+            "app.kubernetes.io/managed-by": "gpu-operator",
+            "helm.sh/chart": "gpu-operator-v23.9.2"
+        }
+    },
+    {
+        "namespace": "kube-infra",
+        "name": "nvidia-device-plugin-daemonset",
+        "labels": {
+            "app": "nvidia-device-plugin-daemonset",
+            "app.kubernetes.io/managed-by": "gpu-operator",
+            "helm.sh/chart": "gpu-operator-v23.9.2"
+        }
+    },
+    {
+        "namespace": "kube-infra",
+        "name": "nvidia-mig-manager",
+        "labels": {
+            "app": "nvidia-mig-manager",
+            "app.kubernetes.io/managed-by": "gpu-operator",
+            "helm.sh/chart": "gpu-operator-v23.9.2"
+        }
+    },
+    {
+        "namespace": "kube-infra",
+        "name": "nvidia-operator-validator",
+        "labels": {
+            "app": "nvidia-operator-validator",
+            "app.kubernetes.io/managed-by": "gpu-operator",
+            "app.kubernetes.io/part-of": "gpu-operator",
+            "helm.sh/chart": "gpu-operator-v23.9.2"
+        }
+    },
+    {
+        "namespace": "kube-monitoring",
+        "name": "in-cluster-vector",
+        "labels": {
+            "app.kubernetes.io/component": "Agent",
+            "app.kubernetes.io/instance": "in-cluster-vector",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "vector",
+            "app.kubernetes.io/version": "0.37.1-distroless-libc",
+            "argocd.argoproj.io/instance": "in-cluster-vector",
+            "helm.sh/chart": "vector-0.32.1"
+        }
+    },
+    {
+        "namespace": "kube-monitoring",
+        "name": "netdata-child",
+        "labels": {
+            "app": "netdata",
+            "argocd.argoproj.io/instance": "netdata",
+            "chart": "netdata-3.7.88",
+            "heritage": "Helm",
+            "release": "netdata",
+            "role": "child"
+        }
+    },
+    {
+        "namespace": "longhorn-system",
+        "name": "engine-image-ei-5cefaf2b",
+        "labels": {
+            "longhorn.io/component": "engine-image",
+            "longhorn.io/engine-image": "ei-5cefaf2b",
+            "longhorn.io/managed-by": "longhorn-manager"
+        }
+    },
+    {
+        "namespace": "longhorn-system",
+        "name": "longhorn-csi-plugin",
+        "labels": {
+            "longhorn.io/managed-by": "longhorn-manager"
+        }
+    },
+    {
+        "namespace": "longhorn-system",
+        "name": "longhorn-manager",
+        "labels": {
+            "app": "longhorn-manager",
+            "app.kubernetes.io/instance": "in-cluster-longhorn",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "longhorn",
+            "app.kubernetes.io/version": "v1.6.1",
+            "argocd.argoproj.io/instance": "in-cluster-longhorn",
+            "helm.sh/chart": "longhorn-1.6.1"
+        }
+    },
+    {
+        "namespace": "security",
+        "name": "in-cluster-falco",
+        "labels": {
+            "app.kubernetes.io/instance": "in-cluster-falco",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "falco",
+            "app.kubernetes.io/version": "0.37.1",
+            "argocd.argoproj.io/instance": "in-cluster-falco",
+            "helm.sh/chart": "falco-4.3.0"
+        }
+    }
+]

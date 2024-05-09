@@ -29,6 +29,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            font-size: large;
 
         }
 
@@ -109,7 +110,8 @@
                 <button onclick="scale('','','','up-all')" class="button-up">Scale Up All</button>
             </td>
         </tr>
-        <h2>Deployments</h2>
+        <hr>
+        <h2 style="color: #38a169; text-transform: uppercase;">Deployments</h2>
         <table>
             <thead>
                 <p>There are {{ deploy|length }} deployments in the cluster.</p>
@@ -131,7 +133,8 @@
                     <td>{{ d.name }}</td>
                     <td>{{ d.namespace }}</td>
                     <td>{{ d.replicas }}</td>
-                    <td>{{ d.available_replicas }}</td>
+                    <td {% if d.available_replicas is none %}style="background-color: #b6312d;" {% endif %}>{{
+                        d.available_replicas }}</td>
                     <!-- <td>{{ d.labels }}</td> -->
                     <td>
                         <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
@@ -144,12 +147,22 @@
                 {% endfor %}
             </tbody>
         </table>
-        <h2>statefulset</h2>
+        <hr>
+        <h2 style="color: #2d42b6; text-transform: uppercase;">Statefulset</h2>
         <table>
             <tbody>
+                <thead>
+                    <p>There are {{ sts|length }} statefulsets in the cluster.</p>
+                    <tr>
 
-                <p>There are {{ sts|length }} statefulset in the cluster.</p>
-
+                        <th>Name</th>
+                        <th>Namespace</th>
+                        <th>Replicas</th>
+                        <th>Available</th>
+                        <!-- <th>Labels</th> -->
+                        <th>Actions</th>
+                    </tr>
+                </thead>
                 {% for s in sts %}
                 <tr>
                     <!-- <td><input type=" checkbox" name="selectedWorkloads" value="s_{{ s.name }}_{{ s.namespace }}">
@@ -157,7 +170,10 @@
                     <td>{{ s.name }}</td>
                     <td>{{ s.namespace }}</td>
                     <td>{{ s.replicas }}</td>
-                    <td>{{ s.available_replicas }}</td>
+                    <!-- <td>{{ s.available_replicas }}</td> -->
+                    <td {% if s.available_replicas==0 %}style="background-color: #b6312d;" {% endif %}>{{
+                        s.available_replicas }}
+                    </td>
                     <!-- <td>{{ s.labels }}</td> -->
                     <td>
                         <button class="button-down"
@@ -169,7 +185,37 @@
                 {% endfor %}
             </tbody>
         </table>
-        <!-- Repeat for Pods with similar structure -->
+        <hr>
+        <h2 style="color: #b6312d; text-transform: uppercase;">Daemonset</h2>
+        <table>
+            <tbody>
+                <thead>
+                    <p>There are {{ ds|length }} Daemonsets in the cluster.</p>
+                    <tr>
+
+                        <th>Name</th>
+                        <th>Namespace</th>
+                        <!-- <th>Replicas</th> -->
+                        <!-- <th>Available</th> -->
+                        <!-- <th>Labels</th> -->
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                {% for d in ds %}
+                <tr>
+
+                    <td>{{ d.name }}</td>
+                    <td>{{ d.namespace }}</td>
+                    <td>
+                        <button class="button-down"
+                            onclick="scale('ds', '{{ d.name }}', '{{ d.namespace }}', 'down')">Shutdown</button>
+                        <button class="button-up" onclick="scale('ds', '{{ d.name }}', '{{ d.namespace }}', 'up')">Scale
+                            Up</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
     <script>
         function scale(type, name, namespace, action) {

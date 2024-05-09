@@ -1,1 +1,130 @@
-[{"namespace": "kube-infra", "name": "keycloak", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "keycloak", "app.kubernetes.io/instance": "keycloak", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "keycloak", "app.kubernetes.io/version": "23.0.7", "argocd.argoproj.io/instance": "keycloak", "helm.sh/chart": "keycloak-19.3.4"}}, {"namespace": "kube-infra", "name": "keycloak-postgresql", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "primary", "app.kubernetes.io/instance": "keycloak", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "postgresql", "app.kubernetes.io/version": "16.2.0", "argocd.argoproj.io/instance": "keycloak", "helm.sh/chart": "postgresql-14.3.3"}}, {"namespace": "kube-infra", "name": "postgresql", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "primary", "app.kubernetes.io/instance": "postgresql", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "postgresql", "app.kubernetes.io/version": "16.2.0", "argocd.argoproj.io/instance": "postgresql", "helm.sh/chart": "postgresql-14.3.3"}}, {"namespace": "kube-monitoring", "name": "develop-victorialogs-victoria-logs-single-server", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app": "server", "app.kubernetes.io/instance": "develop-victorialogs", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "victoria-logs-single", "argocd.argoproj.io/instance": "develop-victorialogs", "helm.sh/chart": "victoria-logs-single-0.3.5"}}, {"namespace": "kube-monitoring", "name": "vmalertmanager-vm-k8s-stack", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/instance": "vm-k8s-stack", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "vmalertmanager", "app.kubernetes.io/version": "v1.99.0", "argocd.argoproj.io/instance": "victoriametrics-rke", "helm.sh/chart": "victoria-metrics-k8s-stack-0.19.4", "managed-by": "vm-operator"}}, {"namespace": "mlops", "name": "airflow-postgresql", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "primary", "app.kubernetes.io/instance": "airflow", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "postgresql", "argocd.argoproj.io/instance": "airflow", "helm.sh/chart": "postgresql-12.10.0"}}, {"namespace": "mlops", "name": "airflow-triggerer", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"argocd.argoproj.io/instance": "airflow", "chart": "airflow-1.11.0", "component": "triggerer", "heritage": "Helm", "release": "airflow", "tier": "airflow"}}, {"namespace": "mlops", "name": "mlflow-postgresql", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "primary", "app.kubernetes.io/instance": "mlflow", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "postgresql", "app.kubernetes.io/version": "16.1.0", "argocd.argoproj.io/instance": "mlflow", "helm.sh/chart": "postgresql-13.4.6"}}, {"namespace": "mlops", "name": "mysql", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "primary", "app.kubernetes.io/instance": "mysql", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "mysql", "app.kubernetes.io/version": "8.0.36", "argocd.argoproj.io/instance": "mysql", "helm.sh/chart": "mysql-9.19.1"}}, {"namespace": "mlops", "name": "mysql-rke", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "primary", "app.kubernetes.io/instance": "mysql-rke", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "mysql", "app.kubernetes.io/version": "8.0.36", "argocd.argoproj.io/instance": "mysql-rke", "helm.sh/chart": "mysql-9.19.1"}}, {"namespace": "mlops", "name": "qdrant-rke", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app": "qdrant", "app.kubernetes.io/instance": "qdrant-rke", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "qdrant", "app.kubernetes.io/version": "v1.8.4", "argocd.argoproj.io/instance": "qdrant-rke", "helm.sh/chart": "qdrant-0.8.4"}}, {"namespace": "security", "name": "develop-vault", "replicas": 3, "available_replicas": 3, "ready_replicas": 3, "labels": {"app.kubernetes.io/instance": "develop-vault", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "vault", "argocd.argoproj.io/instance": "develop-vault"}}, {"namespace": "security", "name": "kubeclarity-kubeclarity-postgresql", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/component": "primary", "app.kubernetes.io/instance": "kubeclarity", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "kubeclarity-postgresql", "argocd.argoproj.io/instance": "kubeclarity", "helm.sh/chart": "kubeclarity-postgresql-11.9.13"}}, {"namespace": "security", "name": "kubeclarity-kubeclarity-trivy-server", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app.kubernetes.io/instance": "kubeclarity", "app.kubernetes.io/managed-by": "Helm", "app.kubernetes.io/name": "kubeclarity-trivy-server", "app.kubernetes.io/version": "0.30.4", "argocd.argoproj.io/instance": "kubeclarity", "helm.sh/chart": "kubeclarity-trivy-server-0.4.17"}}, {"namespace": "vcluster", "name": "vcluster-rke2", "replicas": 1, "available_replicas": 1, "ready_replicas": 1, "labels": {"app": "vcluster", "argocd.argoproj.io/instance": "vcluster-rke2", "chart": "vcluster-0.19.5", "heritage": "Helm", "release": "vcluster-rke2"}}]
+[
+    {
+        "namespace": "kube-monitoring",
+        "name": "in-cluster-victorialogs-victoria-logs-single-server",
+        "replicas": 1,
+        "available_replicas": 1,
+        "ready_replicas": 1,
+        "labels": {
+            "app": "server",
+            "app.kubernetes.io/instance": "in-cluster-victorialogs",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "victoria-logs-single",
+            "argocd.argoproj.io/instance": "in-cluster-victorialogs",
+            "helm.sh/chart": "victoria-logs-single-0.3.7"
+        }
+    },
+    {
+        "namespace": "kube-monitoring",
+        "name": "pyroscope",
+        "replicas": 1,
+        "available_replicas": 1,
+        "ready_replicas": 1,
+        "labels": {
+            "app.kubernetes.io/component": "all",
+            "app.kubernetes.io/instance": "pyroscope",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "pyroscope",
+            "app.kubernetes.io/version": "1.5.0",
+            "argocd.argoproj.io/instance": "pyroscope",
+            "helm.sh/chart": "pyroscope-1.5.1"
+        }
+    },
+    {
+        "namespace": "kube-monitoring",
+        "name": "pyroscope-agent",
+        "replicas": 1,
+        "available_replicas": 1,
+        "ready_replicas": 1,
+        "labels": {
+            "app.kubernetes.io/instance": "pyroscope",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "agent",
+            "app.kubernetes.io/version": "v0.36.2",
+            "argocd.argoproj.io/instance": "pyroscope",
+            "helm.sh/chart": "agent-0.25.0"
+        }
+    },
+    {
+        "namespace": "mlops",
+        "name": "mlflow-postgresql",
+        "replicas": 1,
+        "available_replicas": 1,
+        "ready_replicas": 1,
+        "labels": {
+            "app.kubernetes.io/component": "primary",
+            "app.kubernetes.io/instance": "mlflow",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "postgresql",
+            "app.kubernetes.io/version": "16.2.0",
+            "argocd.argoproj.io/instance": "mlflow",
+            "helm.sh/chart": "postgresql-15.2.1"
+        }
+    },
+    {
+        "namespace": "mlops",
+        "name": "qdrant-dev",
+        "replicas": 1,
+        "available_replicas": 1,
+        "ready_replicas": 1,
+        "labels": {
+            "app": "qdrant",
+            "app.kubernetes.io/instance": "qdrant-dev",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "qdrant",
+            "app.kubernetes.io/version": "v1.8.4",
+            "argocd.argoproj.io/instance": "qdrant-dev",
+            "helm.sh/chart": "qdrant-0.8.4"
+        }
+    },
+    {
+        "namespace": "security",
+        "name": "in-cluster-falco-falcosidekick-ui-redis",
+        "replicas": 1,
+        "available_replicas": 1,
+        "ready_replicas": 1,
+        "labels": {
+            "app.kubernetes.io/component": "ui-redis",
+            "app.kubernetes.io/instance": "in-cluster-falco",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "falcosidekick",
+            "app.kubernetes.io/part-of": "falcosidekick",
+            "app.kubernetes.io/version": "2.28.0",
+            "argocd.argoproj.io/instance": "in-cluster-falco",
+            "helm.sh/chart": "falcosidekick-0.7.17"
+        }
+    },
+    {
+        "namespace": "security",
+        "name": "in-cluster-vault",
+        "replicas": 3,
+        "available_replicas": 1,
+        "ready_replicas": 1,
+        "labels": {
+            "app.kubernetes.io/instance": "in-cluster-vault",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "vault",
+            "argocd.argoproj.io/instance": "in-cluster-vault"
+        }
+    },
+    {
+        "namespace": "sonarqube",
+        "name": "sonarqube-sonarqube",
+        "replicas": 1,
+        "available_replicas": 0,
+        "ready_replicas": null,
+        "labels": {
+            "app": "sonarqube",
+            "app.kubernetes.io/component": "sonarqube-sonarqube",
+            "app.kubernetes.io/instance": "sonarqube",
+            "app.kubernetes.io/managed-by": "Helm",
+            "app.kubernetes.io/name": "sonarqube-sonarqube-sonarqube",
+            "app.kubernetes.io/part-of": "sonarqube",
+            "app.kubernetes.io/version": "10.5.1-community",
+            "argocd.argoproj.io/instance": "sonarqube",
+            "chart": "sonarqube-10.5.1_2816",
+            "heritage": "Helm",
+            "release": "sonarqube"
+        }
+    }
+]

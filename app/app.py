@@ -13,7 +13,7 @@ import json
 
 # Configure FastAPI app
 app = FastAPI()
-logger.add("my_app.log", rotation="100 MB")
+# logger.add("my_app.log", rotation="100 MB")
 
 logger.info("Starting the application...")
 # Configuration for Kubernetes client
@@ -32,10 +32,10 @@ logger.info("Kubernetes API clients initialized.")
 # Protected namespaces and label criteria
 protected_namespaces = [
     "kube-system",
-    "default",
+    # "default",
     "kube-public",
-    "longhorn-system",
-    "keeper",
+    # "longhorn-system",
+    # "keeper",
 ]
 shutdown_label_selector = 'shutdown="false"'
 
@@ -55,7 +55,6 @@ headers = {
 }
 
 
-@app.get("/token")
 def get_argocd_session_token():
     """
     Authenticates with the Argo CD API using username and password to obtain a session token.
@@ -98,6 +97,18 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
             if "argocd.argoproj.io/instance" in d.metadata.labels
         ]
 
+        daemonset = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
+        daemonset_list = [
+            {
+                "namespace": d.metadata.namespace,
+                "name": d.metadata.name,
+                "labels": d.metadata.labels,
+            }
+            for d in daemonset.items
+            if d.metadata.namespace not in protected_namespaces
+            if "argocd.argoproj.io/instance" in d.metadata.labels
+        ]
+
         sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
         sts_list = [
             {
@@ -112,6 +123,20 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
             if s.metadata.namespace not in protected_namespaces
             if "argocd.argoproj.io/instance" in s.metadata.labels
         ]
+        ##
+        for ds in daemonset_list:
+            if mode == "down":
+                logger.info(
+                    f"Scaling down daemonset '{ds['name']}' in namespace '{ds['namespace']}'"
+                )
+
+                await shutdown_app("daemonset", ds["namespace"], ds["name"])
+            elif mode == "up":
+                logger.info(
+                    f"Scaling up daemonset '{ds['name']}' in namespace '{ds['namespace']}'"
+                )
+                await scale_up_app("daemonset", ds["namespace"], ds["name"])
+
         for deploy in deployment_list:
             if mode == "down":
                 logger.info(
@@ -189,6 +214,18 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
                 "status": "error",
                 "message": f"StatefulSet '{name}' in namespace '{namespace}' is protected  ",
             }
+    elif resource_type == "ds":
+        try:
+            c = apps_v1.read_namespaced_daemon_set(name, namespace)
+        except client.exceptions.ApiException as e:
+            return {"status": "error", "message": str(e)}
+
+        # Check if the Deployment has the shutdown protection label
+        if shutdown_label_selector in c.metadata.labels:
+            return {
+                "status": "error",
+                "message": f"DaemonSet '{name}' in namespace '{namespace}' is protected  ",
+            }
     # logger.debug(c.metadata.labels)
     # patch the Deployment
     try:
@@ -207,6 +244,9 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
         # Define the patch to scale the Deployment
 
         body = {"spec": {"replicas": 0}}
+        body_ds = {
+            "spec": {"template": {"spec": {"nodeSelector": {"non-existing": "true"}}}}
+        }
         if resource_type == "deploy":
             apps_v1.patch_namespaced_deployment_scale(
                 name=name, namespace=namespace, body=body
@@ -216,6 +256,12 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
 
             apps_v1.patch_namespaced_stateful_set_scale(
                 name=name, namespace=namespace, body=body
+            )
+        elif resource_type == "ds":
+            # Define the patch to scale the Sts
+
+            apps_v1.patch_namespaced_daemon_set(
+                name=name, namespace=namespace, body=body_ds
             )
             # logger.debug(res)
         logger.info(
@@ -241,12 +287,12 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
     session_token = get_argocd_session_token()
     if session_token is None:
         logger.error("Authentication failed. Cannot proceed with scaling operation.")
-        return
+        return None
+
     if resource_type == "deploy":
         try:
             c = apps_v1.read_namespaced_deployment(name, namespace)
             logger.success("scaled up deployment")
-
         except client.exceptions.ApiException as e:
             return {"status": "error", "message": str(e)}
 
@@ -254,6 +300,13 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
         try:
             c = apps_v1.read_namespaced_stateful_set(name, namespace)
             logger.success("scaled up sts")
+        except client.exceptions.ApiException as e:
+            return {"status": "error", "message": str(e)}
+
+    elif resource_type == "ds":
+        try:
+            c = apps_v1.read_namespaced_daemon_set(name=name, namespace=namespace)
+            logger.success("scaled up ds")
 
         except client.exceptions.ApiException as e:
             return {"status": "error", "message": str(e)}
@@ -284,6 +337,13 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
             apps_v1.patch_namespaced_stateful_set_scale(
                 name=name, namespace=namespace, body=body
             )
+        elif resource_type == "ds":
+            logger.info("scaling up ds")
+            body_ds = {"spec": {"template": {"spec": {"nodeSelector": None}}}}
+            apps_v1.patch_namespaced_daemon_set(
+                name=name, namespace=namespace, body=body_ds
+            )
+            # logger.debug(res)
         return {
             "status": "success",
             "message": f"{resource_type} '{name}' in namespace '{namespace}' has been scaled up",
@@ -311,17 +371,14 @@ def patch_argocd_application(token, namespace, name, enable_auto_sync):
     res = requests.get(f"{ARGOCD_API_URL}/applications/{name}", headers=headers)
     app_config = res.json()
     # app_config.setdefault("spec", {}).setdefault("syncPolicy", {})
-
+    logger.debug(app_config["spec"])
     if not enable_auto_sync:
-        # If disabling auto_sync, remove the 'automated' field
-        app_config["spec"]["syncPolicy"]
-        # del app_config["spec"]["syncPolicy"]["automated"]
-        # delete kub automated field
+        logger.info("disabling auto sync")
+        # app_config["spec"]["syncPolicy"]["automated"] = {}
         app_config["spec"]["syncPolicy"].pop("automated", None)
-        # app_config["spec"]["syncPolicy"]["selfHeal"].pop("enabled", None)
-        logger.debug(app_config)
+        logger.debug(app_config["spec"])
     if enable_auto_sync:
-        # If enabling auto_sync, set the 'automated' field
+        logger.info("enabling auto sync")
         app_config["spec"]["syncPolicy"]["automated"] = {
             "prune": True,
             "selfHeal": True,
@@ -350,7 +407,7 @@ def patch_argocd_application(token, namespace, name, enable_auto_sync):
 
     if response.status_code == 200:
         logger.success("Application patched successfully.")
-        # logger.debug(response.json())
+        logger.debug(response.json())
     else:
         logger.error(
             f"Failed to patch the application. Status code: {response.status_code}, Response: {response.text}"
@@ -394,16 +451,33 @@ async def status(request: Request):
         if s.metadata.namespace not in protected_namespaces
         if "argocd.argoproj.io/instance" in s.metadata.labels
     ]
+
+    daemonset = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
+    ds_list = [
+        {
+            "namespace": ds.metadata.namespace,
+            "name": ds.metadata.name,
+            "labels": ds.metadata.labels,
+        }
+        for ds in daemonset.items
+        if ds.metadata.namespace not in protected_namespaces
+        # if "argocd.argoproj.io/instance" in ds.metadata.labels
+    ]
     # write result to filesystem
     with open("deployment.json", "w") as f:
         json.dump(deployment_list, f)
     with open("sts.json", "w") as f:
         json.dump(sts_list, f)
+    with open("ds.json", "w") as f:
+        json.dump(ds_list, f)
 
-    logger.info(f"Deployments: {len(deployment_list)}, sts: {len(sts_list)}")
+    logger.info(
+        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)}"
+    )
     # Render the template with the list of Deployments
     return templates.TemplateResponse(
-        "index.html", {"request": request, "deploy": deployment_list, "sts": sts_list}
+        "index.html",
+        {"request": request, "deploy": deployment_list, "sts": sts_list, "ds": ds_list},
     )
 
 
@@ -430,8 +504,13 @@ async def list_all_deployments():
         return {"status": "error", "message": str(e)}
 
 
-@app.get("/list-sts")
-async def list_all_sts():
+@app.get("/live")
+def live():
+    return {"status": "ok"}
+
+
+@app.get("/health")
+def list_all_sts():
     """
     Returns the status of all sts in all namespaces.
     """
