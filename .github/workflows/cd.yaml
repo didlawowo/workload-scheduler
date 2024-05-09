@@ -5,7 +5,7 @@ on:
     branches:
     - main
     paths:
-    - 'apps/**'
+    - 'app/**'
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKER_USERNAME }}
