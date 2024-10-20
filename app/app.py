@@ -527,7 +527,13 @@ async def status(request: Request):
     # Render the template with the list of Deployments
     return templates.TemplateResponse(
         "index.html",
-        {"request": request, "deploy": deployment_list, "sts": sts_list, "ds": ds_list},
+        {
+            "request": request,
+            "deploy": deployment_list,
+            "sts": sts_list,
+            "ds": ds_list,
+            "version": "1.5.0",
+        },
     )
 
 

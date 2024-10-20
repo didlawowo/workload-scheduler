@@ -135,6 +135,9 @@
 <body>
     <div class="container">
         <h1>Kubernetes Workloads Manager</h1>
+        <p style="position: absolute; top: 20px; right: 20px; margin: 0; text-align: center;">Application Version: {{
+            version }}</p>
+
         <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>
         </div>
@@ -237,44 +240,43 @@
                     </tr>
                     {% endfor %}
                 </tbody>
-            </table>
+
         </div>
-    </div>
 
-    <script>
-        function scale(type, name, namespace, action) {
-            let url = ``;
-            if (action === 'down') {
-                url = `/shutdown/${type}/${namespace}/${name}`;
-            } else if (action === 'up') {
-                url = `/up/${type}/${namespace}/${name}`;
-            } else if (action === 'down-all') {
-                url = `/manage-all/down`;
-            } else if (action === 'up-all') {
-                url = `/manage-all/up`;
-            }
-            fetch(url, { method: 'GET' })
-                .then(response => response.json())
-                .then(data => {
-                    window.location.reload();
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        document.addEventListener("DOMContentLoaded", function () {
-            var progressBar = document.getElementById("progressBar");
-            var width = 1;
-            var interval = setInterval(function () {
-                if (width >= 100) {
-                    clearInterval(interval);
-                    progressBar.style.display = 'none';
-                } else {
-                    width++;
-                    progressBar.style.width = width + '%';
+        <script>
+            function scale(type, name, namespace, action) {
+                let url = ``;
+                if (action === 'down') {
+                    url = `/shutdown/${type}/${namespace}/${name}`;
+                } else if (action === 'up') {
+                    url = `/up/${type}/${namespace}/${name}`;
+                } else if (action === 'down-all') {
+                    url = `/manage-all/down`;
+                } else if (action === 'up-all') {
+                    url = `/manage-all/up`;
                 }
-            }, 10);
-        });
-    </script>
+                fetch(url, { method: 'GET' })
+                    .then(response => response.json())
+                    .then(data => {
+                        window.location.reload();
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                var progressBar = document.getElementById("progressBar");
+                var width = 1;
+                var interval = setInterval(function () {
+                    if (width >= 100) {
+                        clearInterval(interval);
+                        progressBar.style.display = 'none';
+                    } else {
+                        width++;
+                        progressBar.style.width = width + '%';
+                    }
+                }, 10);
+            });
+        </script>
 </body>
 
 </html>
