@@ -4,96 +4,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kubernetes Workloads Status</title>
+    <title>Kubernetes Workloads Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        #progressBarContainer {
-            width: 100%;
-            background-color: #ddd;
+        :root {
+            --primary-color: #3182ce;
+            --success-color: #38a169;
+            --danger-color: #e53e3e;
+            --bg-color: #f7fafc;
+            --text-color: #2d3748;
+            --border-color: #e2e8f0;
         }
 
-        #progressBar {
-            width: 1%;
-            height: 30px;
-            background-color: #4CAF50;
-        }
-
-        /* Initially hide the progress bar */
-        .hidden {
-            display: none;
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f7fafc;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
             margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: large;
-
+            padding: 20px;
         }
 
         .container {
-            width: 90%;
-            max-width: 1040px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
         }
 
-        .refresh-btn {
-            background-color: #3182ce;
-            color: white;
+        h1,
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .btn {
             padding: 8px 16px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            display: inline;
-            margin: 0 auto 16px auto;
+            transition: background-color 0.3s ease;
         }
 
-        .button-up {
-            background-color: #38a169;
+        .btn-primary {
+            background-color: var(--primary-color);
             color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            display: inline;
-            margin: 0 auto 16px auto;
         }
 
-        .button-down {
-            background-color: #b6312d;
+        .btn-success {
+            background-color: var(--success-color);
             color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            display: inline;
-            margin: 0 auto 16px auto;
         }
 
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
 
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-bottom: 20px;
         }
 
         th,
         td {
             text-align: left;
-            padding: 8px;
-            border: 1px solid #dee2e6;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
         }
 
         th {
-            background-color: #f7fafc;
+            background-color: #edf2f7;
+            font-weight: bold;
         }
 
-        tr:nth-child(even) {
-            background-color: #e2e8f0;
+        tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .progress-container {
+            width: 100%;
+            background-color: #edf2f7;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 0;
+            height: 4px;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            table {
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -101,174 +135,146 @@
 <body>
     <div class="container">
         <h1>Kubernetes Workloads Manager</h1>
-        <div id="progressBarContainer" class="hidden">
-            <div id="progressBar"></div>
+        <div class="progress-container">
+            <div id="progressBar" class="progress-bar"></div>
         </div>
-        <tr>
-            <td>
-                <button onclick="scale('','','','down-all')" class="button-down">Shutdown All</button>
-                <button onclick="scale('','','','up-all')" class="button-up">Scale Up All</button>
-            </td>
-        </tr>
-        <hr>
-        <h2 style="color: #38a169; text-transform: uppercase;">Deployments</h2>
-        <table>
-            <thead>
-                <p>There are {{ deploy|length }} deployments in the cluster.</p>
-                <tr>
 
-                    <th>Name</th>
-                    <th>Namespace</th>
-                    <th>Replicas</th>
-                    <th>Available</th>
-                    <!-- <th>Labels</th> -->
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for d in deploy %}
-                <tr>
-                    <!-- <td><input type="checkbox" name="selectedWorkloads" value="d_{{ d.name }}_{{ d.namespace }}">
-                    </td> -->
-                    <td>{{ d.name }}</td>
-                    <td>{{ d.namespace }}</td>
-                    <td>{{ d.replicas }}</td>
-                    <td {% if d.available_replicas is none %}style="background-color: #b6312d;" {% endif %}>{{
-                        d.available_replicas }}</td>
-                    <!-- <td>{{ d.labels }}</td> -->
-                    <td>
-                        <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
-                            class="button-down">Shutdown</button>
-                        <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
-                            class="button-up">Scale Up</button>
+        <div class="actions">
+            <button onclick="scale('','','','down-all')" class="btn btn-danger">Shutdown All</button>
+            <button onclick="scale('','','','up-all')" class="btn btn-success">Scale Up All</button>
+        </div>
 
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <hr>
-        <h2 style="color: #2d42b6; text-transform: uppercase;">Statefulset</h2>
-        <table>
-            <tbody>
+        <div class="section">
+            <h2>Deployments</h2>
+            <p>There are {{ deploy|length }} deployments in the cluster.</p>
+            <table>
                 <thead>
-                    <p>There are {{ sts|length }} statefulsets in the cluster.</p>
                     <tr>
-
                         <th>Name</th>
                         <th>Namespace</th>
                         <th>Replicas</th>
                         <th>Available</th>
-                        <!-- <th>Labels</th> -->
                         <th>Actions</th>
                     </tr>
                 </thead>
-                {% for s in sts %}
-                <tr>
-                    <!-- <td><input type=" checkbox" name="selectedWorkloads" value="s_{{ s.name }}_{{ s.namespace }}">
-                    </td> -->
-                    <td>{{ s.name }}</td>
-                    <td>{{ s.namespace }}</td>
-                    <td>{{ s.replicas }}</td>
-                    <!-- <td>{{ s.available_replicas }}</td> -->
-                    <td {% if s.available_replicas==0 %}style="background-color: #b6312d;" {% endif %}>{{
-                        s.available_replicas }}
-                    </td>
-                    <!-- <td>{{ s.labels }}</td> -->
-                    <td>
-                        <button class="button-down"
-                            onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'down')">Shutdown</button>
-                        <button class="button-up"
-                            onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'up')">Scale Up</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <hr>
-        <h2 style="color: #b6312d; text-transform: uppercase;">Daemonset</h2>
-        <table>
-            <tbody>
-                <thead>
-                    <p>There are {{ ds|length }} Daemonsets in the cluster.</p>
+                <tbody>
+                    {% for d in deploy %}
                     <tr>
+                        <td>{{ d.name }}</td>
+                        <td>{{ d.namespace }}</td>
+                        <td>{{ d.replicas }}</td>
+                        <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
+                            {{ d.available_replicas }}
+                        </td>
+                        <td>
+                            <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                                class="btn btn-danger">Shutdown</button>
+                            <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
+                                class="btn btn-success">Scale Up</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
+        <div class="section">
+            <h2>Statefulsets</h2>
+            <p>There are {{ sts|length }} statefulsets in the cluster.</p>
+            <table>
+                <thead>
+                    <tr>
                         <th>Name</th>
                         <th>Namespace</th>
-                        <!-- <th>Replicas</th> -->
-                        <!-- <th>Available</th> -->
-                        <!-- <th>Labels</th> -->
+                        <th>Replicas</th>
+                        <th>Available</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                {% for d in ds %}
-                <tr>
+                <tbody>
+                    {% for s in sts %}
+                    <tr>
+                        <td>{{ s.name }}</td>
+                        <td>{{ s.namespace }}</td>
+                        <td>{{ s.replicas }}</td>
+                        <td {% if s.available_replicas==0 %}class="btn-danger" {% endif %}>
+                            {{ s.available_replicas }}
+                        </td>
+                        <td>
+                            <button onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'down')"
+                                class="btn btn-danger">Shutdown</button>
+                            <button onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'up')"
+                                class="btn btn-success">Scale Up</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-                    <td>{{ d.name }}</td>
-                    <td>{{ d.namespace }}</td>
-                    <td>
-                        <button class="button-down"
-                            onclick="scale('ds', '{{ d.name }}', '{{ d.namespace }}', 'down')">Shutdown</button>
-                        <button class="button-up" onclick="scale('ds', '{{ d.name }}', '{{ d.namespace }}', 'up')">Scale
-                            Up</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="section">
+            <h2>Daemonsets</h2>
+            <p>There are {{ ds|length }} Daemonsets in the cluster.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Namespace</th>
+                        <!-- <th>Actions</th> -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in ds %}
+                    <tr>
+                        <td>{{ d.name }}</td>
+                        <td>{{ d.namespace }}</td>
+                        <!-- <td>
+                            <button onclick="scale('ds', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                                class="btn btn-danger">Shutdown</button>
+                            <button onclick="scale('ds', '{{ d.name }}', '{{ d.namespace }}', 'up')"
+                                class="btn btn-success">Scale Up</button>
+                        </td> -->
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
+
     <script>
         function scale(type, name, namespace, action) {
             let url = ``;
-            // Check the action to construct the appropriate URL
             if (action === 'down') {
-                // For shutdown, target the /shutdown route
                 url = `/shutdown/${type}/${namespace}/${name}`;
             } else if (action === 'up') {
-                // Assuming there's another route for scaling up
-                // Replace this with the actual URL if you implement scaling up
                 url = `/up/${type}/${namespace}/${name}`;
             } else if (action === 'down-all') {
-                // For bulk actions, target the /bulk route
                 url = `/manage-all/down`;
             } else if (action === 'up-all') {
                 url = `/manage-all/up`;
             }
-            // Fetch API to send a request to the FastAPI backend
             fetch(url, { method: 'GET' })
                 .then(response => response.json())
                 .then(data => {
-                    window.location.reload(); // Refresh the page after the action
+                    window.location.reload();
                 })
                 .catch(error => console.error('Error:', error));
         }
 
-
         document.addEventListener("DOMContentLoaded", function () {
             var progressBar = document.getElementById("progressBar");
             var width = 1;
-            var progressBarContainer = document.getElementById("progressBarContainer");
-            progressBarContainer.classList.remove("hidden");
-
             var interval = setInterval(function () {
                 if (width >= 100) {
                     clearInterval(interval);
-                    // Hide the progress bar container
-                    progressBarContainer.classList.add("hidden");
+                    progressBar.style.display = 'none';
                 } else {
                     width++;
                     progressBar.style.width = width + '%';
                 }
-            }, 10); // Adjust the speed as necessary
+            }, 10);
         });
-
-        function pageLoaded() {
-            // This function is called once the page is fully loaded
-            // Hide the progress bar immediately, or adjust based on actual load status
-            document.getElementById("progressBarContainer").classList.add("hidden");
-        }
     </script>
-
 </body>
 
 </html>

@@ -11,6 +11,10 @@ from typing import Any, Dict
 import requests
 import json
 
+# from github import Github
+# import yaml
+# import base64
+
 # Configure FastAPI app
 app = FastAPI()
 # logger.add("my_app.log", rotation="100 MB")
@@ -34,7 +38,7 @@ protected_namespaces = [
     "kube-system",
     # "default",
     "kube-public",
-    # "longhorn-system",
+    "longhorn-system",
     # "keeper",
 ]
 shutdown_label_selector = 'shutdown="false"'
@@ -53,6 +57,58 @@ PASSWORD = os.getenv("ARGOCD_PASSWORD", "admin")
 headers = {
     "Content-Type": "application/json",
 }
+
+# Configuration
+ACCESS_TOKEN = os.getenv("GITHUB_ACCESS_TOKEN")
+REPO_NAME = "didlawowo/continuous-delivery"
+TARGET_APP_NAME = "qdrant-dev"  # Name to search for in the metadata
+
+# Initialize GitHub client
+# g = Github(ACCESS_TOKEN)
+
+# Get the repository
+# repo = g.get_repo(REPO_NAME)
+
+# def find_and_update_file(target):
+#     # Iterate through the contents of the repository
+#     contents = repo.get_contents("")
+#     while contents:
+#         file_content = contents.pop(0)
+#         if file_content.type == "dir":
+#             contents.extend(repo.get_contents(file_content.path))
+#         elif file_content.name.endswith(".yaml") or file_content.name.endswith(".yml"):
+#             # Process the YAML file
+#             data = yaml.safe_load(
+#                 base64.b64decode(repo.get_contents(file_content.path).content)
+#             )
+#             # Check if this is the target application
+#             if data.get("metadata", {}).get("name") == target:
+#                 print(f"Found target file: {file_content.path}")
+#                 # Check for 'automated' in 'syncPolicy' and remove it
+#                 if (
+#                     "syncPolicy" in data["spec"]
+#                     and "automated" in data["spec"]["syncPolicy"]
+#                 ):
+#                     del data["spec"]["syncPolicy"]["automated"]
+#                     # Convert the data back to YAML
+#                     updated_yaml = yaml.safe_dump(
+#                         data, default_flow_style=False, sort_keys=False
+#                     )
+#                     # Commit the changes
+#                     commit_message = "Remove automated syncPolicy from Application"
+#                     repo.update_file(
+#                         file_content.path,
+#                         commit_message,
+#                         updated_yaml,
+#                         file_content.sha,
+#                     )
+#                     print("File updated and committed successfully.")
+#                     return True
+#     return False
+
+# # Execute the function
+# if not find_and_update_file(TARGET_APP_NAME):
+#     print("No matching application metadata name found in any YAML file.")
 
 
 def get_argocd_session_token():
@@ -77,6 +133,9 @@ def get_argocd_session_token():
         return None
 
 
+argo_session_token = get_argocd_session_token()
+
+
 @app.get("/manage-all/{mode}")
 async def manage_all_deployments(mode: str) -> Dict[str, Any]:
     logger.info("Received request to manage all workloads.")
@@ -93,22 +152,26 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
                 "labels": d.metadata.labels,
             }
             for d in deployment.items
+            if d.metadata.labels is not None
             if d.metadata.namespace not in protected_namespaces
             if "argocd.argoproj.io/instance" in d.metadata.labels
         ]
+        logger.debug(deployment_list)
 
-        daemonset = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
-        daemonset_list = [
-            {
-                "namespace": d.metadata.namespace,
-                "name": d.metadata.name,
-                "labels": d.metadata.labels,
-            }
-            for d in daemonset.items
-            if d.metadata.namespace not in protected_namespaces
-            if "argocd.argoproj.io/instance" in d.metadata.labels
-        ]
+        # daemonset = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
+        # daemonset_list = [
+        #     {
+        #         "namespace": ds.metadata.namespace,
+        #         "name": ds.metadata.name,
+        #         "labels": ds.metadata.labels,
+        #     }
+        #     for ds in daemonset.items
+        #     if ds.metadata.labels is not None
+        #     if ds.metadata.namespace not in protected_namespaces
+        #     if "argocd.argoproj.io/instance" in ds.metadata.labels
+        # ]
 
+        # logger.debug(daemonset_list)
         sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
         sts_list = [
             {
@@ -120,22 +183,23 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
                 "labels": s.metadata.labels,
             }
             for s in sts.items
+            if s.metadata.labels is not None
             if s.metadata.namespace not in protected_namespaces
             if "argocd.argoproj.io/instance" in s.metadata.labels
         ]
         ##
-        for ds in daemonset_list:
-            if mode == "down":
-                logger.info(
-                    f"Scaling down daemonset '{ds['name']}' in namespace '{ds['namespace']}'"
-                )
+        # for ds in daemonset_list:
+        #     if mode == "down":
+        #         logger.info(
+        #             f"Scaling down daemonset '{ds['name']}' in namespace '{ds['namespace']}'"
+        #         )
 
-                await shutdown_app("daemonset", ds["namespace"], ds["name"])
-            elif mode == "up":
-                logger.info(
-                    f"Scaling up daemonset '{ds['name']}' in namespace '{ds['namespace']}'"
-                )
-                await scale_up_app("daemonset", ds["namespace"], ds["name"])
+        #         await shutdown_app("daemonset", ds["namespace"], ds["name"])
+        #     elif mode == "up":
+        #         logger.info(
+        #             f"Scaling up daemonset '{ds['name']}' in namespace '{ds['namespace']}'"
+        #         )
+        #         await scale_up_app("daemonset", ds["namespace"], ds["name"])
 
         for deploy in deployment_list:
             if mode == "down":
@@ -176,12 +240,6 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
     shutdown the specified Deployment, considering protected namespaces and labels.
     """
 
-    # Authenticate and get session token
-    session_token = get_argocd_session_token()
-    if session_token is None:
-        logger.error("Authentication failed. Cannot proceed with scaling operation.")
-        return
-
     # Check if the namespace is protected
     if namespace in protected_namespaces:
         return {
@@ -192,36 +250,45 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
     # Fetch the Deployment to check its labels
     if resource_type == "deploy":
         try:
-            c = apps_v1.read_namespaced_deployment(name, namespace)
+            d = apps_v1.read_namespaced_deployment(name, namespace)
+            application_name = d.metadata.labels["argocd.argoproj.io/instance"]
+
         except client.exceptions.ApiException as e:
             return {"status": "error", "message": str(e)}
 
         # Check if the Deployment has the shutdown protection label
-        if shutdown_label_selector in c.metadata.labels:
+        if shutdown_label_selector in d.metadata.labels:
             return {
                 "status": "error",
                 "message": f"Deployment '{name}' in namespace '{namespace}' is protected  ",
             }
     elif resource_type == "sts":
         try:
-            c = apps_v1.read_namespaced_stateful_set(name, namespace)
+            sts = apps_v1.read_namespaced_stateful_set(name, namespace)
+            application_name = sts.metadata.labels["argocd.argoproj.io/instance"]
+
         except client.exceptions.ApiException as e:
             return {"status": "error", "message": str(e)}
 
         # Check if the Deployment has the shutdown protection label
-        if shutdown_label_selector in c.metadata.labels:
+        if shutdown_label_selector in sts.metadata.labels:
             return {
                 "status": "error",
                 "message": f"StatefulSet '{name}' in namespace '{namespace}' is protected  ",
             }
     elif resource_type == "ds":
         try:
-            c = apps_v1.read_namespaced_daemon_set(name, namespace)
+            ds = apps_v1.read_namespaced_daemon_set(name, namespace)
+            # if ds.metadata.labels["argocd.argoproj.io/instance"]:
+            #     application_name = ds.metadata.labels["argocd.argoproj.io/instance"]
+            # else:
+            application_name = name
+            # logger.debug(application_name)
         except client.exceptions.ApiException as e:
             return {"status": "error", "message": str(e)}
 
         # Check if the Deployment has the shutdown protection label
-        if shutdown_label_selector in c.metadata.labels:
+        if shutdown_label_selector in ds.metadata.labels:
             return {
                 "status": "error",
                 "message": f"DaemonSet '{name}' in namespace '{namespace}' is protected  ",
@@ -229,48 +296,49 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
     # logger.debug(c.metadata.labels)
     # patch the Deployment
     try:
-        application_name = c.metadata.labels["argocd.argoproj.io/instance"]
         # Step 1: Disable auto-sync
-        logger.info(f"Disabling auto-sync... for application '{application_name}'")
-        patch_argocd_application(
-            token=session_token,
-            name=application_name,
-            enable_auto_sync=False,
-            namespace=namespace,
-        )
-        logger.success(
-            f"Auto-sync disabled for application '{application_name}'. Proceeding with scaling down the Deployment."
-        )
-        # Define the patch to scale the Deployment
-
-        body = {"spec": {"replicas": 0}}
-        body_ds = {
-            "spec": {"template": {"spec": {"nodeSelector": {"non-existing": "true"}}}}
-        }
-        if resource_type == "deploy":
-            apps_v1.patch_namespaced_deployment_scale(
-                name=name, namespace=namespace, body=body
+        if resource_type != "ds":
+            logger.info(f"Disabling auto-sync... for application '{application_name}'")
+            patch_argocd_application(
+                token=argo_session_token,
+                app_name=application_name,
+                enable_auto_sync=False,
             )
-        elif resource_type == "sts":
-            # Define the patch to scale the Sts
-
-            apps_v1.patch_namespaced_stateful_set_scale(
-                name=name, namespace=namespace, body=body
+            logger.success(
+                f"Auto-sync disabled for application '{application_name}'. Proceeding with scaling down the Deployment."
             )
-        elif resource_type == "ds":
-            # Define the patch to scale the Sts
+            # Define the patch to scale the Deployment
 
-            apps_v1.patch_namespaced_daemon_set(
-                name=name, namespace=namespace, body=body_ds
+            body = {"spec": {"replicas": 0}}
+            body_ds = {
+                "spec": {
+                    "template": {"spec": {"nodeSelector": {"non-existing": "true"}}}
+                }
+            }
+            if resource_type == "deploy":
+                apps_v1.patch_namespaced_deployment_scale(
+                    name=name, namespace=namespace, body=body
+                )
+            elif resource_type == "sts":
+                # Define the patch to scale the Sts
+
+                apps_v1.patch_namespaced_stateful_set_scale(
+                    name=name, namespace=namespace, body=body
+                )
+            elif resource_type == "ds":
+                # Define the patch to scale the Sts
+
+                apps_v1.patch_namespaced_daemon_set(
+                    name=name, namespace=namespace, body=body_ds
+                )
+                # logger.debug(res)
+            logger.info(
+                f"{resource_type} '{name}' in namespace '{namespace}' has been shutdown  "
             )
-            # logger.debug(res)
-        logger.info(
-            f"{resource_type} '{name}' in namespace '{namespace}' has been shutdown  "
-        )
-        return {
-            "status": "success",
-            "message": f"{resource_type} '{name}' in namespace '{namespace}' has been shutdown.",
-        }
+            return {
+                "status": "success",
+                "message": f"{resource_type} '{name}' in namespace '{namespace}' has been shutdown.",
+            }
 
     except client.exceptions.ApiException as e:
         logger.error(e)
@@ -283,11 +351,6 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
     scale up the specified Deployment, considering protected namespaces and labels.
     """
     logger.info(f"Scaling up {resource_type} '{name}' in namespace '{namespace}'")
-    # Authenticate and get session token
-    session_token = get_argocd_session_token()
-    if session_token is None:
-        logger.error("Authentication failed. Cannot proceed with scaling operation.")
-        return None
 
     if resource_type == "deploy":
         try:
@@ -314,13 +377,12 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
     # restore auto-sync
     try:
         application_name = c.metadata.labels["argocd.argoproj.io/instance"]
-        # Step 1: Disable auto-sync
+        # Step 1: enable auto-sync
         logger.info(f"Enabling auto-sync for application '{application_name}'")
         patch_argocd_application(
-            token=session_token,
-            name=application_name,
+            token=argo_session_token,
+            app_name=application_name,
             enable_auto_sync=True,
-            namespace=namespace,
         )
         logger.success(
             f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
@@ -353,7 +415,7 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
         return {"status": "error", "message": str(e)}
 
 
-def patch_argocd_application(token, namespace, name, enable_auto_sync):
+def patch_argocd_application(token, app_name, enable_auto_sync):
     """
     Send a PATCH request to modify an Argo CD application.
 
@@ -365,17 +427,16 @@ def patch_argocd_application(token, namespace, name, enable_auto_sync):
 
     """
     # Example usage
-    PATCH_TYPE = "merge"  # Assuming Argo CD supports standard Kubernetes patch types
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    res = requests.get(f"{ARGOCD_API_URL}/applications/{name}", headers=headers)
+    res = requests.get(f"{ARGOCD_API_URL}/applications/{app_name}", headers=headers)
     app_config = res.json()
     # app_config.setdefault("spec", {}).setdefault("syncPolicy", {})
     logger.debug(app_config["spec"])
     if not enable_auto_sync:
         logger.info("disabling auto sync")
         # app_config["spec"]["syncPolicy"]["automated"] = {}
-        app_config["spec"]["syncPolicy"].pop("automated", None)
+        app_config["spec"]["syncPolicy"]["automated"] = None
         logger.debug(app_config["spec"])
     if enable_auto_sync:
         logger.info("enabling auto sync")
@@ -384,35 +445,23 @@ def patch_argocd_application(token, namespace, name, enable_auto_sync):
             "selfHeal": True,
         }
 
-        # Prepare the payload for the PATCH request
-    patch_payload = {"spec": {"syncPolicy": app_config["spec"]["syncPolicy"]}}
+    logger.info(f" app name {app_name}")
 
-    payload = {
-        "appNamespace": "kube-infra",
-        "name": name,
-        # "namespace": "kube-infra",
-        "patch": json.dumps(patch_payload),
-        "patchType": PATCH_TYPE,
-        "project": app_config["spec"]["project"],
-    }
-    # logger.debug("check list app")
-    logger.info(f" app name {name}")
-
-    logger.debug(f"patch content {payload}")
-    response = requests.patch(
-        f"{ARGOCD_API_URL}/applications/{name}",
+    # logger.debug(f"patch content {app_config}")
+    response = requests.put(
+        f"{ARGOCD_API_URL}/applications/{app_name}?validate=false",
         headers=headers,
-        data=json.dumps(payload),
+        data=json.dumps(app_config),
     )
 
     if response.status_code == 200:
         logger.success("Application patched successfully.")
-        logger.debug(response.json())
+        # logger.debug(response.json())
     else:
         logger.error(
             f"Failed to patch the application. Status code: {response.status_code}, Response: {response.text}"
         )
-    res = requests.get(f"{ARGOCD_API_URL}/applications/{name}", headers=headers)
+    res = requests.get(f"{ARGOCD_API_URL}/applications/{app_name}", headers=headers)
     logger.info(f"policy {res.json()['spec']['syncPolicy']}")
 
 
@@ -433,6 +482,7 @@ async def status(request: Request):
             "labels": d.metadata.labels,
         }
         for d in deployment.items
+        if d.metadata.labels is not None
         if d.metadata.namespace not in protected_namespaces
         if "argocd.argoproj.io/instance" in d.metadata.labels
     ]
