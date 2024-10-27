@@ -1,30 +1,23 @@
 image:
   repository: fizzbuzz2/workload-scheduler
-  tag: v1.5.0
+  tag: ef2d918
   pullPolicy: "Always"
   pullSecrets:
-  - name: registry-credentials
-
-
+    - name: registry-credentials
 domainName: "workload-scheduler.dc-tech.work"
-
 autoscaling:
   enabled: false
-
 replicas: 1
-
 strategy:
   type: RollingUpdate
   rollingUpdate:
     maxUnavailable: 25%
     maxSurge: 25%
-
 serviceAccount:
   create: true
   name: workload-scheduler
   # annotations:
   #   iam.gke.io/gcp-service-account: workload-scheduler@gcp-project-id.iam.gserviceaccount.com
-
 # cronJobs:
 # - name: call-api
 #   schedule: "0 */3 * * *" # Runs every 3 hours
@@ -40,23 +33,19 @@ serviceAccount:
 #             - -c
 #             - curl -X POST http://workload-scheduler:8000/shutdown
 #             restartPolicy: OnFailure
-
 application:
   ports:
-  - name: http
-    containerPort: 8000
-    protocol: TCP
+    - name: http
+      containerPort: 8000
+      protocol: TCP
   containerName: workload-scheduler
   command: []
   args: []
-
 service:
   port: 80
   targetPort: 8000
   type: ClusterIP
   portName: http
-
-
 resources:
   limits:
     cpu: 300m
@@ -64,25 +53,17 @@ resources:
   requests:
     cpu: 150m
     memory: 128Mi
-
 env:
-- name: ARGO_USERNAME
-  value: "admin"
-- name: ARGO_PASSWORD
-  value: "admin"
-- name: ARGOCD_API_URL
-  value: "http://argocd.dc-tech.work/api/v1"
-
+  - name: ARGO_USERNAME
+    value: "admin"
+  - name: ARGO_PASSWORD
+    value: "admin"
+  - name: ARGOCD_API_URL
+    value: "http://argocd.dc-tech.work/api/v1"
 volumeMounts: []
-
 volumes: []
-
 envFrom: []
-
 nodeSelector: {}
-
-
-
 livenessProbe:
   httpGet:
     scheme: HTTP
@@ -93,7 +74,6 @@ livenessProbe:
   timeoutSeconds: 2
   successThreshold: 1
   failureThreshold: 3
-
 readinessProbe:
   httpGet:
     scheme: HTTP
