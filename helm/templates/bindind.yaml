@@ -1,0 +1,27 @@
+# Role definition (e.g., ingress-reader-role.yaml)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: workload-scheduler-role
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments","statefulsets", "deployments/scale" ]
+  verbs: ["get", "list", "patch", "update"]
+- apiGroups: ["apps"]
+  resources: ["daemonsets"]
+  verbs: ["get", "list", "patch", "update"]
+
+---
+# Role binding definition (e.g., ingress-reader-binding.yaml)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: workload-reader-binding
+subjects:
+- kind: ServiceAccount
+  name: workload-scheduler
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: workload-scheduler-role
+  apiGroup: rbac.authorization.k8s.io
