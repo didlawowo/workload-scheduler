@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request
 from kubernetes import client, config
 from loguru import logger
 import os
-from dotenv import load_dotenv
 from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
