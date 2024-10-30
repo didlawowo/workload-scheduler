@@ -385,22 +385,22 @@ def patch_argocd_application(token, app_name, enable_auto_sync):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def status(request: Request):
+def status(request: Request):
     """
     Fetches all Deployments /   and renders them using a Jinja2 template.
     """
     logger.info("Fetching Deployments, Daemonets and StatefulSets...")
-    deployment_list = await list_all_deployments()
-    sts_list = await list_all_sts()
-    ds_list = await list_all_daemonsets()
+    deployment_list = list_all_deployments()
+    sts_list = list_all_sts()
+    ds_list = list_all_daemonsets()
 
     # write result to filesystem
-    with open("deployment.json", "w") as f:
-        json.dump(deployment_list, f)
-    with open("sts.json", "w") as f:
-        json.dump(sts_list, f)
-    with open("ds.json", "w") as f:
-        json.dump(ds_list, f)
+    # with open("deployment.json", "w") as f:
+    #     json.dump(deployment_list, f)
+    # with open("sts.json", "w") as f:
+    #     json.dump(sts_list, f)
+    # with open("ds.json", "w") as f:
+    #     json.dump(ds_list, f)
 
     logger.info(
         f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)},  "
@@ -419,7 +419,7 @@ async def status(request: Request):
     )
 
 
-async def list_all_daemonsets():
+def list_all_daemonsets():
     """
     Returns the status of all DaemonSets in all namespaces, including pod information.
     """
@@ -527,7 +527,7 @@ async def list_all_daemonsets():
         return {"status": "error", "message": str(e)}
 
 
-async def list_all_deployments():
+def list_all_deployments():
     """
     Returns the status of all Deployments in all namespaces, including pod information.
     """
@@ -628,7 +628,7 @@ async def list_all_deployments():
         return {"status": "error", "message": str(e)}
 
 
-async def list_all_sts():
+def list_all_sts():
     """
     Returns the status of all statefullset in all namespaces.
     """

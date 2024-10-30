@@ -1,181 +1,182 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta http-equiv="refresh" content="60">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kubernetes Workloads Manager</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #3182ce;
-            --success-color: #38a169;
-            --danger-color: #e53e3e;
-            --bg-color: #f7fafc;
-            --text-color: #2d3748;
-            --border-color: #e2e8f0;
-        }
+<meta http-equiv="refresh" content="60">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Workloads Manager</title>
+<link rel="icon" type="image/x-icon" href="https://avatars.githubusercontent.com/u/12622760?s=32&v=4">
 
-        * {
-            box-sizing: border-box;
-        }
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --primary-color: #3182ce;
+        --success-color: #38a169;
+        --danger-color: #e53e3e;
+        --bg-color: #f7fafc;
+        --text-color: #2d3748;
+        --border-color: #e2e8f0;
+    }
 
-        .pod-details {
-            max-width: fit-content;
-            margin-bottom: 10px;
-            padding: 5px;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-        }
+    * {
+        box-sizing: border-box;
+    }
 
-        .pod-details.collapsed .detailed-info {
-            display: none;
-        }
+    .pod-details {
+        max-width: fit-content;
+        margin-bottom: 10px;
+        padding: 5px;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+    }
 
-        .toggle-button {
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 2px 8px;
-            cursor: pointer;
-            font-size: 0.8em;
-            margin-left: 10px;
-        }
+    .pod-details.collapsed .detailed-info {
+        display: none;
+    }
 
-        .status-line {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    .toggle-button {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        padding: 2px 8px;
+        cursor: pointer;
+        font-size: 0.8em;
+        margin-left: 10px;
+    }
 
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-        }
+    .status-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
 
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        line-height: 1.6;
+        margin: 0;
+        padding: 20px;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+    }
+
+    h1,
+    h2 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+
+    .btn-success,
+    .btn-danger,
+    .btn-primary {
+        background-color: var(--success-color);
+        color: white;
+        width: 100px;
+        margin: 5px auto;
+        /* Set a fixed width for all buttons */
+    }
+
+    .btn-danger {
+        background-color: var(--danger-color);
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color);
+    }
+
+    .btn:hover {
+        opacity: 0.9;
+    }
+
+    .actions {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+    th,
+    td {
+        text-align: left;
+        padding: 10px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+        background-color: #edf2f7;
+        font-weight: bold;
+    }
+
+    tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .section {
+        margin-bottom: 40px;
+    }
+
+    .progress-container {
+        width: 100%;
+        background-color: #edf2f7;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .progress-bar {
+        width: 0;
+        height: 7px;
+        background-color: var(--primary-color);
+        transition: width 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-
-        h1,
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn-primary {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-
-        .btn-success,
-        .btn-danger,
-        .btn-primary {
-            background-color: var(--success-color);
-            color: white;
-            width: 100px;
-            margin: 5px auto;
-            /* Set a fixed width for all buttons */
-        }
-
-        .btn-danger {
-            background-color: var(--danger-color);
-        }
-
-        .btn-primary {
-            background-color: var(--primary-color);
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        .actions {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
+            padding: 10px;
         }
 
         table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
+            font-size: 14px;
         }
-
-        th,
-        td {
-            text-align: left;
-            padding: 10px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        th {
-            background-color: #edf2f7;
-            font-weight: bold;
-        }
-
-        tr:hover {
-            background-color: #f8fafc;
-        }
-
-        .section {
-            margin-bottom: 40px;
-        }
-
-        .progress-container {
-            width: 100%;
-            background-color: #edf2f7;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-
-        .progress-bar {
-            width: 0;
-            height: 7px;
-            background-color: var(--primary-color);
-            transition: width 0.3s ease;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-
-            table {
-                font-size: 14px;
-            }
-        }
-    </style>
+    }
+</style>
 </head>
 
 <body>
     <div class="container">
         <h1>Kubernetes Workloads Manager</h1>
         <p
-            style="position: absolute; top: 20px; right: 20px; margin: 20px auto; text-align: center; background-color: #3182ce; color: white; padding: 5px ; border-radius: 2px;">
-            Application Version: {{ version }}</p>
+            style="position: absolute; top: 20px;   margin: 20px auto; text-align: center; background-color: #3182ce; color: white; padding: 5px ; border-radius: 2px;">
+            Version: {{ version }}</p>
 
         <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>
@@ -454,5 +455,7 @@
             });
         </script>
 </body>
+
+</html>
 
 </html>
