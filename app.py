@@ -483,6 +483,7 @@ async def list_all_deployments():
 
         for d in deployment.items:
             # Skip if not matching our criteria
+            logger.debug(d.metadata.name)
             if d.metadata.name == "workload-scheduler":
                 continue
             if (
