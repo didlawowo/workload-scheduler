@@ -26,10 +26,10 @@ logger.info("Kubernetes configuration loaded.")
 
 
 # Load environment variables from .envrc file
-load_dotenv(".envrc")
+# load_dotenv(".envrc")
 
 # Get the version from the environment variable
-version = os.getenv("VERSION", "2.0.0")  # Default to '2.0.0' if not found
+version = "2.0.0"  # Default to '2.0.0' if not found
 
 # Kubernetes API clients
 apps_v1 = client.AppsV1Api()
