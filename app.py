@@ -31,8 +31,12 @@ load_dotenv(".envrc")
 # Get the version from the environment variable
 version = os.getenv("VERSION", "2.0.0")  # Default to '2.0.0' if not found
 
-# Kubernetes API clients
+if os.getenv("ENV") == "development":
+    config.load_kube_config()
+else:
+    config.load_incluster_config()
 
+# Kubernetes API clients
 apps_v1 = client.AppsV1Api()
 core_v1 = client.CoreV1Api()
 logger.info("Kubernetes API clients initialized.")
