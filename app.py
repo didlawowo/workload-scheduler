@@ -330,14 +330,14 @@ def patch_argocd_application(token, app_name, enable_auto_sync):
 
 
 @app.get("/", response_class=HTMLResponse)
-def status(request: Request):
+async def status(request: Request):
     """
     Fetches all Deployments /   and renders them using a Jinja2 template.
     """
     logger.info("Fetching Deployments, Daemonets and StatefulSets...")
-    deployment_list = list_all_deployments()
-    sts_list = list_all_sts()
-    ds_list = list_all_daemonsets()
+    deployment_list = await list_all_deployments()
+    sts_list = await list_all_sts()
+    ds_list = await list_all_daemonsets()
 
     # write result to filesystem
     # with open("deployment.json", "w") as f:
@@ -364,7 +364,7 @@ def status(request: Request):
     )
 
 
-def list_all_daemonsets():
+async def list_all_daemonsets():
     """
     Returns the status of all DaemonSets in all namespaces, including pod information.
     """
@@ -472,13 +472,14 @@ def list_all_daemonsets():
         return {"status": "error", "message": str(e)}
 
 
-def list_all_deployments():
+async def list_all_deployments():
     """
     Returns the status of all Deployments in all namespaces, including pod information.
     """
     try:
         deployment = apps_v1.list_deployment_for_all_namespaces(watch=False)
         deployment_list = []
+        logger.debug(f"{len(deployment.items)} deploy found ")
 
         for d in deployment.items:
             # Skip if not matching our criteria
@@ -573,14 +574,14 @@ def list_all_deployments():
         return {"status": "error", "message": str(e)}
 
 
-def list_all_sts():
+async def list_all_sts():
     """
     Returns the status of all statefullset in all namespaces.
     """
     try:
         statfull_sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
         sts_list = []
-
+        logger.debug(f"{len(statfull_sts.items)} sts found ")
         for s in statfull_sts.items:
             if (
                 s.metadata.labels is not None
