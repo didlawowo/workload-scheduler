@@ -483,6 +483,8 @@ async def list_all_deployments():
 
         for d in deployment.items:
             # Skip if not matching our criteria
+            if d.metadata.name == "workload-scheduler":
+                continue
             if (
                 d.metadata.labels is None
                 or d.metadata.namespace in protected_namespaces
