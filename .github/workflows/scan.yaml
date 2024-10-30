@@ -9,7 +9,7 @@ on:
 jobs:
   scan:
     name: Build and analyze
-    runs-on: self-hosted
+    runs-on: arc-runner-set-workload
     
     steps:
       - uses: actions/checkout@v4
