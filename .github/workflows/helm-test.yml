@@ -16,7 +16,6 @@ jobs:
         with:
           fetch-depth: 0
 
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -41,28 +40,28 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         uses: helm/kind-action@v1.10.0
 
-      - name: Install Helm Chart in namespace `portal-checker`
+      - name: Install Helm Chart in namespace `workload-scheduler`
         if: steps.list-changed.outputs.changed == 'true'
-        run: helm install portal-checker ./charts/portal-checker --namespace portal-checker --create-namespace
+        run: helm install workload-scheduler ./charts/workload-scheduler --namespace workload-scheduler --create-namespace
 
-      - name: Wait for Pods to be ready in namespace `portal-checker`
+      - name: Wait for Pods to be ready in namespace `workload-scheduler`
         if: steps.list-changed.outputs.changed == 'true'
         run: sleep 120
       
-      - name: Check Pod status in namespace `portal-checker`
+      - name: Check Pod status in namespace `workload-scheduler`
         if: steps.list-changed.outputs.changed == 'true'
         run: |
-          kubectl get pods -n portal-checker
+          kubectl get pods -n workload-scheduler
 
-      - name: Print logs for a pod with label `app=portal-checker`
+      - name: Print logs for a pod with label `app=workload-scheduler`
         if: steps.list-changed.outputs.changed == 'true'
         run: |
-          kubectl logs -n portal-checker -l app=portal-checker
+          kubectl logs -n workload-scheduler -l app=workload-scheduler
       
-      - name: Check if portal-checker pod is running
+      - name: Check if workload-scheduler pod is running
         if: steps.list-changed.outputs.changed == 'true'
         run: |
-          STATUS=$(kubectl get pods -l app=portal-checker -n portal-checker -o jsonpath="{.items[*].status.phase}")
+          STATUS=$(kubectl get pods -l app=workload-scheduler -n workload-scheduler -o jsonpath="{.items[*].status.phase}")
           if [ "$STATUS" != "Running" ]; then
             echo "Pod is not in Running state: $STATUS"
             exit 1
