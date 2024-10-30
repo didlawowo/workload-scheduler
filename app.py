@@ -21,7 +21,7 @@ if os.getenv("KUBE_ENV") == "development":
     config.load_kube_config()  # For local development
 else:
     config.load_incluster_config()  # For running inside a cluster
-logger.info("Kubernetes configuration loaded.")
+    logger.info("Kubernetes in cluster configuration loaded.")
 
 
 # Load environment variables from .envrc file
@@ -29,7 +29,7 @@ logger.info("Kubernetes configuration loaded.")
 
 # Get the version from the environment variable
 version = "2.0.0"  # Default to '2.0.0' if not found
-
+logger.info(f"Version: {version}")
 # Kubernetes API clients
 apps_v1 = client.AppsV1Api()
 core_v1 = client.CoreV1Api()
@@ -44,7 +44,6 @@ protected_namespaces = [
     # "keeper",
 ]
 shutdown_label_selector = 'shutdown="false"'
-
 templates = Jinja2Templates(directory="templates")
 
 
@@ -60,58 +59,6 @@ headers = {
     "Content-Type": "application/json",
 }
 
-# Configuration
-ACCESS_TOKEN = os.getenv("GITHUB_ACCESS_TOKEN")
-REPO_NAME = "didlawowo/continuous-delivery"
-TARGET_APP_NAME = "qdrant-dev"  # Name to search for in the metadata
-
-# Initialize GitHub client
-# g = Github(ACCESS_TOKEN)
-
-# Get the repository
-# repo = g.get_repo(REPO_NAME)
-
-# def find_and_update_file(target):
-#     # Iterate through the contents of the repository
-#     contents = repo.get_contents("")
-#     while contents:
-#         file_content = contents.pop(0)
-#         if file_content.type == "dir":
-#             contents.extend(repo.get_contents(file_content.path))
-#         elif file_content.name.endswith(".yaml") or file_content.name.endswith(".yml"):
-#             # Process the YAML file
-#             data = yaml.safe_load(
-#                 base64.b64decode(repo.get_contents(file_content.path).content)
-#             )
-#             # Check if this is the target application
-#             if data.get("metadata", {}).get("name") == target:
-#                 print(f"Found target file: {file_content.path}")
-#                 # Check for 'automated' in 'syncPolicy' and remove it
-#                 if (
-#                     "syncPolicy" in data["spec"]
-#                     and "automated" in data["spec"]["syncPolicy"]
-#                 ):
-#                     del data["spec"]["syncPolicy"]["automated"]
-#                     # Convert the data back to YAML
-#                     updated_yaml = yaml.safe_dump(
-#                         data, default_flow_style=False, sort_keys=False
-#                     )
-#                     # Commit the changes
-#                     commit_message = "Remove automated syncPolicy from Application"
-#                     repo.update_file(
-#                         file_content.path,
-#                         commit_message,
-#                         updated_yaml,
-#                         file_content.sha,
-#                     )
-#                     print("File updated and committed successfully.")
-#                     return True
-#     return False
-
-# # Execute the function
-# if not find_and_update_file(TARGET_APP_NAME):
-#     print("No matching application metadata name found in any YAML file.")
-
 
 def get_argocd_session_token():
     """
@@ -126,7 +73,7 @@ def get_argocd_session_token():
     if response.status_code == 200:
         session_token = response.json()["token"]
         # logger.debug(f"Session token: {session_token}")
-        logger.info("Successfully authenticated with Argo CD.")
+        logger.success("Successfully authenticated with Argo CD.")
         return session_token
     else:
         logger.error(
@@ -400,7 +347,7 @@ def status(request: Request):
     # with open("ds.json", "w") as f:
     #     json.dump(ds_list, f)
 
-    logger.info(
+    logger.success(
         f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)},  "
     )
     # Render the template with the list of Deployments
@@ -738,4 +685,5 @@ def health():
 if __name__ == "__main__":
     import uvicorn
 
+    logger.info("STARTING APP")
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
