@@ -32,8 +32,10 @@ load_dotenv(".envrc")
 version = os.getenv("VERSION", "2.0.0")  # Default to '2.0.0' if not found
 
 if os.getenv("ENV") == "development":
+    logger.info("dev mode")
     config.load_kube_config()
 else:
+    logger.info("using incluster config")
     config.load_incluster_config()
 
 # Kubernetes API clients
