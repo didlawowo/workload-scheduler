@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from kubernetes import client, config
 from loguru import logger
 import os
+from dotenv import load_dotenv
 from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -11,13 +12,9 @@ from typing import Any, Dict
 import requests
 import json
 
-# from github import Github
-# import yaml
-# import base64
 
 # Configure FastAPI app
 app = FastAPI()
-# logger.add("my_app.log", rotation="100 MB")
 
 logger.info("Starting the application...")
 # Configuration for Kubernetes client
@@ -28,9 +25,16 @@ else:
 logger.info("Kubernetes configuration loaded.")
 
 
+# Load environment variables from .envrc file
+load_dotenv(".envrc")
+
+# Get the version from the environment variable
+version = os.getenv("VERSION", "2.0.0")  # Default to '2.0.0' if not found
+
 # Kubernetes API clients
 
 apps_v1 = client.AppsV1Api()
+core_v1 = client.CoreV1Api()
 logger.info("Kubernetes API clients initialized.")
 
 # Protected namespaces and label criteria
@@ -141,65 +145,8 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
     logger.info("Received request to manage all workloads.")
     logger.info(f"mode: {mode}")
     try:
-        deployment = apps_v1.list_deployment_for_all_namespaces(watch=False)
-        deployment_list = [
-            {
-                "namespace": d.metadata.namespace,
-                "name": d.metadata.name,
-                "replicas": d.status.replicas,
-                "available_replicas": d.status.available_replicas,
-                "ready_replicas": d.status.ready_replicas,
-                "labels": d.metadata.labels,
-            }
-            for d in deployment.items
-            if d.metadata.labels is not None
-            if d.metadata.namespace not in protected_namespaces
-            if "argocd.argoproj.io/instance" in d.metadata.labels
-        ]
-        logger.debug(deployment_list)
-
-        # daemonset = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
-        # daemonset_list = [
-        #     {
-        #         "namespace": ds.metadata.namespace,
-        #         "name": ds.metadata.name,
-        #         "labels": ds.metadata.labels,
-        #     }
-        #     for ds in daemonset.items
-        #     if ds.metadata.labels is not None
-        #     if ds.metadata.namespace not in protected_namespaces
-        #     if "argocd.argoproj.io/instance" in ds.metadata.labels
-        # ]
-
-        # logger.debug(daemonset_list)
-        sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
-        sts_list = [
-            {
-                "namespace": s.metadata.namespace,
-                "name": s.metadata.name,
-                "replicas": s.status.replicas,
-                "available_replicas": s.status.available_replicas,
-                "ready_replicas": s.status.ready_replicas,
-                "labels": s.metadata.labels,
-            }
-            for s in sts.items
-            if s.metadata.labels is not None
-            if s.metadata.namespace not in protected_namespaces
-            if "argocd.argoproj.io/instance" in s.metadata.labels
-        ]
-        ##
-        # for ds in daemonset_list:
-        #     if mode == "down":
-        #         logger.info(
-        #             f"Scaling down daemonset '{ds['name']}' in namespace '{ds['namespace']}'"
-        #         )
-
-        #         await shutdown_app("daemonset", ds["namespace"], ds["name"])
-        #     elif mode == "up":
-        #         logger.info(
-        #             f"Scaling up daemonset '{ds['name']}' in namespace '{ds['namespace']}'"
-        #         )
-        #         await scale_up_app("daemonset", ds["namespace"], ds["name"])
+        deployment_list = list_all_deployments
+        sts_list = list_all_sts
 
         for deploy in deployment_list:
             if mode == "down":
@@ -276,25 +223,9 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
                 "status": "error",
                 "message": f"StatefulSet '{name}' in namespace '{namespace}' is protected  ",
             }
-    elif resource_type == "ds":
-        try:
-            ds = apps_v1.read_namespaced_daemon_set(name, namespace)
-            # if ds.metadata.labels["argocd.argoproj.io/instance"]:
-            #     application_name = ds.metadata.labels["argocd.argoproj.io/instance"]
-            # else:
-            application_name = name
-            # logger.debug(application_name)
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
 
-        # Check if the Deployment has the shutdown protection label
-        if shutdown_label_selector in ds.metadata.labels:
-            return {
-                "status": "error",
-                "message": f"DaemonSet '{name}' in namespace '{namespace}' is protected  ",
-            }
     # logger.debug(c.metadata.labels)
-    # patch the Deployment
+    # patch the resources
     try:
         # Step 1: Disable auto-sync
         if resource_type != "ds":
@@ -310,28 +241,16 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
             # Define the patch to scale the Deployment
 
             body = {"spec": {"replicas": 0}}
-            body_ds = {
-                "spec": {
-                    "template": {"spec": {"nodeSelector": {"non-existing": "true"}}}
-                }
-            }
+
             if resource_type == "deploy":
                 apps_v1.patch_namespaced_deployment_scale(
                     name=name, namespace=namespace, body=body
                 )
             elif resource_type == "sts":
-                # Define the patch to scale the Sts
-
                 apps_v1.patch_namespaced_stateful_set_scale(
                     name=name, namespace=namespace, body=body
                 )
-            elif resource_type == "ds":
-                # Define the patch to scale the Sts
 
-                apps_v1.patch_namespaced_daemon_set(
-                    name=name, namespace=namespace, body=body_ds
-                )
-                # logger.debug(res)
             logger.info(
                 f"{resource_type} '{name}' in namespace '{namespace}' has been shutdown  "
             )
@@ -468,51 +387,13 @@ def patch_argocd_application(token, app_name, enable_auto_sync):
 @app.get("/", response_class=HTMLResponse)
 async def status(request: Request):
     """
-    Fetches all Deployments / Sts and renders them using a Jinja2 template.
+    Fetches all Deployments /   and renders them using a Jinja2 template.
     """
-    logger.info("Fetching Deployments and StatefulSets...")
-    deployment = apps_v1.list_deployment_for_all_namespaces(watch=False)
-    deployment_list = [
-        {
-            "namespace": d.metadata.namespace,
-            "name": d.metadata.name,
-            "replicas": d.status.replicas,
-            "available_replicas": d.status.available_replicas,
-            "ready_replicas": d.status.ready_replicas,
-            "labels": d.metadata.labels,
-        }
-        for d in deployment.items
-        if d.metadata.labels is not None
-        if d.metadata.namespace not in protected_namespaces
-        if "argocd.argoproj.io/instance" in d.metadata.labels
-    ]
+    logger.info("Fetching Deployments, Daemonets and StatefulSets...")
+    deployment_list = await list_all_deployments()
+    sts_list = await list_all_sts()
+    ds_list = await list_all_daemonsets()
 
-    sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
-    sts_list = [
-        {
-            "namespace": s.metadata.namespace,
-            "name": s.metadata.name,
-            "replicas": s.status.replicas,
-            "available_replicas": s.status.available_replicas,
-            "ready_replicas": s.status.ready_replicas,
-            "labels": s.metadata.labels,
-        }
-        for s in sts.items
-        if s.metadata.namespace not in protected_namespaces
-        if "argocd.argoproj.io/instance" in s.metadata.labels
-    ]
-
-    daemonset = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
-    ds_list = [
-        {
-            "namespace": ds.metadata.namespace,
-            "name": ds.metadata.name,
-            "labels": ds.metadata.labels,
-        }
-        for ds in daemonset.items
-        if ds.metadata.namespace not in protected_namespaces
-        # if "argocd.argoproj.io/instance" in ds.metadata.labels
-    ]
     # write result to filesystem
     with open("deployment.json", "w") as f:
         json.dump(deployment_list, f)
@@ -522,7 +403,7 @@ async def status(request: Request):
         json.dump(ds_list, f)
 
     logger.info(
-        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)}"
+        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)},  "
     )
     # Render the template with the list of Deployments
     return templates.TemplateResponse(
@@ -532,30 +413,295 @@ async def status(request: Request):
             "deploy": deployment_list,
             "sts": sts_list,
             "ds": ds_list,
-            "version": "1.5.0",
+            # Use the version in your code
+            "version": version,
         },
     )
 
 
-@app.get("/list-deployments")
-async def list_all_deployments():
+async def list_all_daemonsets():
     """
-    Returns the status of all Deployments in all namespaces.
+    Returns the status of all DaemonSets in all namespaces, including pod information.
     """
     try:
-        deployments = apps_v1.list_deployment_for_all_namespaces().items
-        data = []
-        for d in deployments:
+        daemonsets = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
+        daemonset_list = []
+
+        for ds in daemonsets.items:
+            # Skip if not matching our criteria
+            if (
+                ds.metadata.labels is None
+                or ds.metadata.namespace in protected_namespaces
+            ):
+                continue
+
+            # Get pods directly - DaemonSets control pods directly (no ReplicaSet in between)
+            pods = core_v1.list_namespaced_pod(ds.metadata.namespace).items
+
+            pod_info = []
+
+            for pod in pods:
+                if pod.metadata.owner_references:
+                    for owner in pod.metadata.owner_references:
+                        if owner.kind == "DaemonSet" and owner.name == ds.metadata.name:
+                            # Check for PVCs
+                            has_pvc = any(
+                                volume.persistent_volume_claim
+                                for volume in pod.spec.volumes
+                                if hasattr(volume, "persistent_volume_claim")
+                            )
+
+                            # Get resource requests and limits
+                            resources = pod.spec.containers[0].resources
+                            requests = (
+                                resources.requests
+                                if resources and resources.requests
+                                else {}
+                            )
+                            limits = (
+                                resources.limits
+                                if resources and resources.limits
+                                else {}
+                            )
+
+                            # Get node conditions if available
+                            node_conditions = {}
+                            if pod.spec.node_name:
+                                try:
+                                    node = core_v1.read_node(pod.spec.node_name)
+                                    node_conditions = {
+                                        cond.type: cond.status
+                                        for cond in node.status.conditions
+                                    }
+                                except client.exceptions.ApiException:
+                                    logger.warning(
+                                        f"Could not fetch conditions for node {pod.spec.node_name}"
+                                    )
+
+                            pod_info.append(
+                                {
+                                    "name": pod.metadata.name,
+                                    "node": pod.spec.node_name,
+                                    "status": pod.status.phase,
+                                    "has_pvc": has_pvc,
+                                    "resource_requests": requests,
+                                    "resource_limits": limits,
+                                    "node_conditions": node_conditions,
+                                    "start_time": pod.status.start_time.isoformat()
+                                    if pod.status.start_time
+                                    else None,
+                                }
+                            )
+                            # logger.debug(pod_info)
+                            break
+
+            # Get DaemonSet-specific status
             status = {
-                "namespace": d.metadata.namespace,
-                "name": d.metadata.name,
-                "replicas": d.status.replicas,
-                "available_replicas": d.status.available_replicas,
-                "ready_replicas": d.status.ready_replicas,
-                "labels": d.metadata.labels,
+                "desired_number_scheduled": ds.status.desired_number_scheduled,
+                "current_number_scheduled": ds.status.current_number_scheduled,
+                "number_ready": ds.status.number_ready,
+                "updated_number_scheduled": ds.status.updated_number_scheduled,
+                "number_available": ds.status.number_available
+                if hasattr(ds.status, "number_available")
+                else None,
+                "number_misscheduled": ds.status.number_misscheduled,
             }
-            data.append(status)
-        return {"status": "success", "data": data}
+
+            daemonset_list.append(
+                {
+                    "namespace": ds.metadata.namespace,
+                    "name": ds.metadata.name,
+                    "labels": ds.metadata.labels,
+                    "status": status,
+                    "pods": pod_info,
+                    "update_strategy": ds.spec.update_strategy.type
+                    if ds.spec.update_strategy
+                    else None,
+                    "selector": ds.spec.selector.match_labels,
+                }
+            )
+
+        return daemonset_list
+
+    except client.exceptions.ApiException as e:
+        return {"status": "error", "message": str(e)}
+
+
+async def list_all_deployments():
+    """
+    Returns the status of all Deployments in all namespaces, including pod information.
+    """
+    try:
+        deployment = apps_v1.list_deployment_for_all_namespaces(watch=False)
+        deployment_list = []
+
+        for d in deployment.items:
+            # Skip if not matching our criteria
+            if (
+                d.metadata.labels is None
+                or d.metadata.namespace in protected_namespaces
+                or "argocd.argoproj.io/instance" not in d.metadata.labels
+            ):
+                continue
+
+            # Get ReplicaSets for this deployment
+            replicasets = apps_v1.list_namespaced_replica_set(
+                d.metadata.namespace,
+                label_selector=",".join(
+                    [f"{k}={v}" for k, v in d.spec.selector.match_labels.items()]
+                ),
+            )
+
+            # Find the active ReplicaSet(s)
+            active_rs = []
+            for rs in replicasets.items:
+                if rs.metadata.owner_references:
+                    for owner in rs.metadata.owner_references:
+                        if owner.kind == "Deployment" and owner.name == d.metadata.name:
+                            active_rs.append(rs)
+                            break
+
+            # Sort ReplicaSets by creation timestamp to get the most recent one
+            active_rs.sort(key=lambda x: x.metadata.creation_timestamp, reverse=True)
+
+            # Get pods
+            pods = core_v1.list_namespaced_pod(d.metadata.namespace, watch=False).items
+
+            pod_info = []
+
+            for pod in pods:
+                if pod.metadata.owner_references:
+                    for owner in pod.metadata.owner_references:
+                        # Check if pod belongs to one of our active ReplicaSets
+                        if owner.kind == "ReplicaSet" and any(
+                            rs.metadata.name == owner.name for rs in active_rs
+                        ):
+                            # Check for PVCs
+                            has_pvc = any(
+                                volume.persistent_volume_claim
+                                for volume in pod.spec.volumes
+                                if hasattr(volume, "persistent_volume_claim")
+                            )
+
+                            # Get resource requests and limits
+                            resources = pod.spec.containers[0].resources
+                            requests = (
+                                resources.requests
+                                if resources and resources.requests
+                                else {}
+                            )
+                            limits = (
+                                resources.limits
+                                if resources and resources.limits
+                                else {}
+                            )
+
+                            pod_info.append(
+                                {
+                                    "name": pod.metadata.name,
+                                    "node": pod.spec.node_name,
+                                    "status": pod.status.phase,
+                                    "has_pvc": has_pvc,
+                                    "resource_requests": requests,
+                                    "resource_limits": limits,
+                                    "replicaset": owner.name,
+                                }
+                            )
+
+                            break  # Found the right owner, no need to check others
+
+            deployment_list.append(
+                {
+                    "namespace": d.metadata.namespace,
+                    "name": d.metadata.name,
+                    "replicas": d.status.replicas,
+                    "available_replicas": d.status.available_replicas,
+                    "ready_replicas": d.status.ready_replicas,
+                    "labels": d.metadata.labels,
+                    "pods": pod_info,
+                }
+            )
+
+        return deployment_list
+
+    except client.exceptions.ApiException as e:
+        return {"status": "error", "message": str(e)}
+
+
+async def list_all_sts():
+    """
+    Returns the status of all statefullset in all namespaces.
+    """
+    try:
+        statfull_sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
+        sts_list = []
+
+        for s in statfull_sts.items:
+            if (
+                s.metadata.labels is not None
+                and s.metadata.namespace not in protected_namespaces
+                and "argocd.argoproj.io/instance" in s.metadata.labels
+            ):
+                # Get pod information
+                pods = core_v1.list_namespaced_pod(
+                    s.metadata.namespace,
+                    watch=False,
+                ).items
+
+                pod_info = []
+
+                for pod in pods:
+                    # Method 1: Check owner references
+                    if pod.metadata.owner_references:
+                        for owner in pod.metadata.owner_references:
+                            if (
+                                owner.kind == "StatefulSet"
+                                and owner.uid == s.metadata.uid
+                            ):
+                                # Check for PVCs
+                                has_pvc = any(
+                                    volume.persistent_volume_claim
+                                    for volume in pod.spec.volumes
+                                    if hasattr(volume, "persistent_volume_claim")
+                                )
+
+                                # Get resource requests and limits
+                                resources = pod.spec.containers[0].resources
+                                requests = (
+                                    resources.requests
+                                    if resources and resources.requests
+                                    else {}
+                                )
+                                limits = (
+                                    resources.limits
+                                    if resources and resources.limits
+                                    else {}
+                                )
+
+                                pod_info.append(
+                                    {
+                                        "name": pod.metadata.name,
+                                        "node": pod.spec.node_name,
+                                        "status": pod.status.phase,
+                                        "has_pvc": has_pvc,
+                                        "resource_requests": requests,
+                                        "resource_limits": limits,
+                                    }
+                                )
+
+                sts_list.append(
+                    {
+                        "namespace": s.metadata.namespace,
+                        "name": s.metadata.name,
+                        "replicas": s.status.replicas,
+                        "available_replicas": s.status.available_replicas,
+                        "ready_replicas": s.status.ready_replicas,
+                        "labels": s.metadata.labels,
+                        "pods": pod_info,
+                    }
+                )
+
+        return sts_list
     except client.exceptions.ApiException as e:
         return {"status": "error", "message": str(e)}
 
@@ -566,23 +712,12 @@ def live():
 
 
 @app.get("/health")
-def list_all_sts():
+def health():
     """
     Returns the status of all sts in all namespaces.
     """
     try:
-        replica_sets = apps_v1.list_stateful_set_for_all_namespaces().items
-        data = []
-        for rs in replica_sets:
-            status = {
-                "namespace": rs.metadata.namespace,
-                "name": rs.metadata.name,
-                "replicas": rs.status.replicas,
-                "available_replicas": rs.status.available_replicas,
-                "ready_replicas": rs.status.ready_replicas,
-                "labels": rs.metadata.labels,
-            }
-            data.append(status)
+        data = list_all_sts()
         return {"status": "success", "data": data}
     except client.exceptions.ApiException as e:
         return {"status": "error", "message": str(e)}

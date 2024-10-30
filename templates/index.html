@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <meta http-equiv="refresh" content="60">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kubernetes Workloads Manager</title>
@@ -20,6 +21,34 @@
             box-sizing: border-box;
         }
 
+        .pod-details {
+            max-width: fit-content;
+            margin-bottom: 10px;
+            padding: 5px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .pod-details.collapsed .detailed-info {
+            display: none;
+        }
+
+        .toggle-button {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 2px 8px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
+        .status-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
         body {
             font-family: 'Roboto', sans-serif;
             background-color: var(--bg-color);
@@ -30,7 +59,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
             background-color: white;
@@ -58,14 +87,23 @@
             color: white;
         }
 
-        .btn-success {
+
+        .btn-success,
+        .btn-danger,
+        .btn-primary {
             background-color: var(--success-color);
             color: white;
+            width: 100px;
+            margin: 5px auto;
+            /* Set a fixed width for all buttons */
         }
 
         .btn-danger {
             background-color: var(--danger-color);
-            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
         }
 
         .btn:hover {
@@ -88,7 +126,7 @@
         th,
         td {
             text-align: left;
-            padding: 12px;
+            padding: 10px;
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -115,7 +153,7 @@
 
         .progress-bar {
             width: 0;
-            height: 4px;
+            height: 7px;
             background-color: var(--primary-color);
             transition: width 0.3s ease;
         }
@@ -135,8 +173,9 @@
 <body>
     <div class="container">
         <h1>Kubernetes Workloads Manager</h1>
-        <p style="position: absolute; top: 20px; right: 20px; margin: 0; text-align: center;">Application Version: {{
-            version }}</p>
+        <p
+            style="position: absolute; top: 20px; right: 20px; margin: 20px auto; text-align: center; background-color: #3182ce; color: white; padding: 5px ; border-radius: 2px;">
+            Application Version: {{ version }}</p>
 
         <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>
@@ -155,8 +194,10 @@
                     <tr>
                         <th>Name</th>
                         <th>Namespace</th>
-                        <th>Replicas</th>
-                        <th>Available</th>
+                        <th style="width: 30px;">Replicas</th>
+                        <th style="width: 30px;">Available</th>
+                        <!-- <th>Labels</th> -->
+                        <th>Details</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -164,10 +205,61 @@
                     {% for d in deploy %}
                     <tr>
                         <td>{{ d.name }}</td>
-                        <td>{{ d.namespace }}</td>
+                        <td>{{ d.namespace|upper }}</td>
+
                         <td>{{ d.replicas }}</td>
                         <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
                             {{ d.available_replicas }}
+                        </td>
+                        <!-- <td>
+                            {% if d.labels %}
+                            <ul style="list-style-type: none; padding: 0; margin: 0;">
+                                {% for key, value in d.labels.items() %}
+                                <li><strong>{{ key }}:</strong> {{ value }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            No labels
+                            {% endif %}
+                        </td> -->
+                        <td>
+                            {% for pod in d.pods %}
+                            <div class="pod-details collapsed">
+                                <div class="status-line">
+                                    <span>
+                                        <strong>Status:</strong>
+                                        <span
+                                            style="color: {% if pod.status == 'Running' %}green{% else %}red{% endif %};">
+                                            {{ pod.status }}
+                                        </span>
+                                    </span>
+                                    <button class="toggle-button" onclick="toggleDetails(this)">Show Details</button>
+                                </div>
+                                <div class="detailed-info">
+                                    <strong>Node:</strong> {{ pod.node }}<br>
+                                    <strong>Has PVC:</strong> {{ "YES" if pod.has_pvc else 'No' }}<br>
+                                    <strong>Requests:</strong>
+                                    {% if pod.resource_requests %}
+                                    <ul style="margin: 0px 0; padding-left: 20px;">
+                                        {% for resource, value in pod.resource_requests.items() %}
+                                        <li>{{ resource }}: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span style="color: orange"> Warning {% endif %}</span><br>
+
+                                    <strong>Limits:</strong>
+                                    {% if pod.resource_limits %}
+                                    <ul style="margin: 0px 0; padding-left: 20px;">
+                                        {% for resource, value in pod.resource_limits.items() %}
+                                        <li>{{ resource }}: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span style="color: orange"> Warning {% endif %}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </td>
                         <td>
                             <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
@@ -189,24 +281,67 @@
                     <tr>
                         <th>Name</th>
                         <th>Namespace</th>
-                        <th>Replicas</th>
-                        <th>Available</th>
+                        <th style="width: 30px;">Replicas</th>
+                        <th style="width: 30px;">Available</th>
+                        <!-- <th>Labels</th> -->
+                        <th>Details</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for s in sts %}
+                    {% for d in sts %}
                     <tr>
-                        <td>{{ s.name }}</td>
-                        <td>{{ s.namespace }}</td>
-                        <td>{{ s.replicas }}</td>
-                        <td {% if s.available_replicas==0 %}class="btn-danger" {% endif %}>
-                            {{ s.available_replicas }}
+                        <td>{{ d.name }}</td>
+                        <td>{{ d.namespace|upper }}</td>
+
+                        <td>{{ d.replicas }}</td>
+                        <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
+                            {{ d.available_replicas }}
+                        </td>
+
+                        <td>
+                            {% for pod in d.pods %}
+                            <div class="pod-details collapsed">
+                                <div class="status-line">
+                                    <span>
+                                        <strong>Status:</strong>
+                                        <span
+                                            style="color: {% if pod.status == 'Running' %}green{% else %}red{% endif %};">
+                                            {{ pod.status }}
+                                        </span>
+                                    </span>
+                                    <button class="toggle-button" onclick="toggleDetails(this)">Show Details</button>
+                                </div>
+                                <div class="detailed-info">
+                                    <strong>Node:</strong> {{ pod.node }}<br>
+                                    <strong>Has PVC:</strong> {{ "YES" if pod.has_pvc else 'No' }}<br>
+                                    <strong>Requests:</strong>
+                                    {% if pod.resource_requests %}
+                                    <ul style="margin: 0px 0; padding-left: 20px;">
+                                        {% for resource, value in pod.resource_requests.items() %}
+                                        <li>{{ resource }}: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span style="color: orange"> Warning {% endif %}</span><br>
+
+                                    <strong>Limits:</strong>
+                                    {% if pod.resource_limits %}
+                                    <ul style="margin: 0px 0; padding-left: 20px;">
+                                        {% for resource, value in pod.resource_limits.items() %}
+                                        <li>{{ resource }}: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span style="color: orange"> Warning {% endif %}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </td>
                         <td>
-                            <button onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'down')"
+                            <button onclick="scale('sts', '{{ d.name }}', '{{ d.namespace }}', 'down')"
                                 class="btn btn-danger">Shutdown</button>
-                            <button onclick="scale('sts', '{{ s.name }}', '{{ s.namespace }}', 'up')"
+                            <button onclick="scale('sts', '{{ d.name }}', '{{ d.namespace }}', 'up')"
                                 class="btn btn-success">Scale Up</button>
                         </td>
                     </tr>
@@ -216,34 +351,75 @@
         </div>
 
         <div class="section">
-            <h2>Daemonsets</h2>
-            <p>There are {{ ds|length }} Daemonsets in the cluster.</p>
+            <h2>DaemonSets</h2>
+            <p>There are {{ ds|length }} DaemonSets in the cluster.</p>
             <table>
                 <thead>
                     <tr>
                         <th>Name</th>
                         <th>Namespace</th>
-                        <!-- <th>Actions</th> -->
+                        <th>Details</th>
+
                     </tr>
                 </thead>
                 <tbody>
                     {% for d in ds %}
                     <tr>
                         <td>{{ d.name }}</td>
-                        <td>{{ d.namespace }}</td>
-                        <!-- <td>
-                            <button onclick="scale('ds', '{{ d.name }}', '{{ d.namespace }}', 'down')"
-                                class="btn btn-danger">Shutdown</button>
-                            <button onclick="scale('ds', '{{ d.name }}', '{{ d.namespace }}', 'up')"
-                                class="btn btn-success">Scale Up</button>
-                        </td> -->
+                        <td>{{ d.namespace|upper }}</td>
+                        <td>
+                            {% for pod in d.pods %}
+                            <div class="pod-details collapsed">
+                                <div class="status-line">
+                                    <span>
+                                        <strong>Status:</strong>
+                                        <span
+                                            style="color: {% if pod.status == 'Running' %}green{% else %}red{% endif %};">
+                                            {{ pod.status }}
+                                        </span>
+                                    </span>
+                                    <button class="toggle-button" onclick="toggleDetails(this)">Show Details</button>
+                                </div>
+                                <div class="detailed-info">
+                                    <strong>Node:</strong> {{ pod.node }}<br>
+                                    <strong>Has PVC:</strong> {{ "YES" if pod.has_pvc else 'No' }}<br>
+                                    <strong>Requests:</strong>
+                                    {% if pod.resource_requests %}
+                                    <ul style="margin: 0px 0; padding-left: 20px;">
+                                        {% for resource, value in pod.resource_requests.items() %}
+                                        <li>{{ resource }}: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span style="color: orange"> Warning {% endif %}</span><br>
+
+                                    <strong>Limits:</strong>
+                                    {% if pod.resource_limits %}
+                                    <ul style="margin: 0px 0; padding-left: 20px;">
+                                        {% for resource, value in pod.resource_limits.items() %}
+                                        <li>{{ resource }}: {{ value }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span style="color: orange"> Warning {% endif %}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </td>
+
                     </tr>
                     {% endfor %}
                 </tbody>
-
+            </table>
         </div>
 
         <script>
+            function toggleDetails(button) {
+                const podDetails = button.closest('.pod-details');
+                podDetails.classList.toggle('collapsed');
+                button.textContent = podDetails.classList.contains('collapsed') ? 'Show Details' : 'Hide Details';
+            }
+
             function scale(type, name, namespace, action) {
                 let url = ``;
                 if (action === 'down') {
