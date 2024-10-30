@@ -717,7 +717,20 @@ def health():
     Returns the status of all sts in all namespaces.
     """
     try:
-        data = list_all_sts()
+        try:
+            data = core_v1.list_namespaced_pod(namespace="kube-system")
+            pod_list = []
+            for pod in data.items:
+                pod_list.append(
+                    {
+                        "name": pod.metadata.name,
+                        "status": pod.status.phase,
+                        "node": pod.spec.node_name,
+                    }
+                )
+            return {"status": "success", "data": pod_list}
+        except client.exceptions.ApiException as e:
+            return {"status": "error", "message": str(e)}
         return {"status": "success", "data": data}
     except client.exceptions.ApiException as e:
         return {"status": "error", "message": str(e)}
