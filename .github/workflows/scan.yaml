@@ -8,7 +8,7 @@ on:
 
 jobs:
   scan:
-    name: Build and analyze
+    name: Sonar scanner
     runs-on: arc-runner-set-workload
     
     steps:
