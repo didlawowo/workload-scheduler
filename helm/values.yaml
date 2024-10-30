@@ -3,7 +3,7 @@ image:
   tag: be70eaf
   pullPolicy: "Always"
   pullSecrets:
-    - name: registry-credentials
+  - name: registry-credentials
 domainName: "workload-scheduler.dc-tech.work"
 autoscaling:
   enabled: false
@@ -35,9 +35,9 @@ serviceAccount:
 #             restartPolicy: OnFailure
 application:
   ports:
-    - name: http
-      containerPort: 8000
-      protocol: TCP
+  - name: http
+    containerPort: 8000
+    protocol: TCP
   containerName: workload-scheduler
   command: []
   args: []
@@ -54,12 +54,12 @@ resources:
     cpu: 150m
     memory: 128Mi
 env:
-  - name: ARGO_USERNAME
-    value: "admin"
-  - name: ARGO_PASSWORD
-    value: "admin"
-  - name: ARGOCD_API_URL
-    value: "http://argocd.dc-tech.work/api/v1"
+- name: ARGO_USERNAME
+  value: "admin"
+- name: ARGO_PASSWORD
+  value: "admin"
+- name: ARGOCD_API_URL
+  value: "http://argocd.dc-tech.work/api/v1"
 volumeMounts: []
 volumes: []
 envFrom: []
@@ -69,9 +69,9 @@ livenessProbe:
     scheme: HTTP
     path: /live
     port: 8000
-  initialDelaySeconds: 10
+  initialDelaySeconds: 5
   periodSeconds: 30
-  timeoutSeconds: 2
+  timeoutSeconds: 1
   successThreshold: 1
   failureThreshold: 3
 readinessProbe:
@@ -81,6 +81,6 @@ readinessProbe:
     port: 8000
   initialDelaySeconds: 5
   periodSeconds: 30
-  timeoutSeconds: 2
+  timeoutSeconds: 3
   successThreshold: 1
   failureThreshold: 3
