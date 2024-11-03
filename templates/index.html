@@ -5,8 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kubernetes Workloads Manager</title>
-<link rel="icon" type="image/x-icon" href="https://avatars.githubusercontent.com/u/12622760?s=32&v=4">
-
+<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon.ico">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -173,10 +172,13 @@
 
 <body>
     <div class="container">
-        <h1>Kubernetes Workloads Manager</h1>
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <h1 style="margin-right: 20px;">Kubernetes Workloads Manager</h1>
+            <img src="/static/image.png" alt="Kubernetes Logo" style="height: 50px;">
+        </div>
         <p
             style="position: absolute; top: 20px;   margin: 20px auto; text-align: center; background-color: #3182ce; color: white; padding: 5px ; border-radius: 2px;">
-            Version: {{ version }}</p>
+            {{ version }}</p>
 
         <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>

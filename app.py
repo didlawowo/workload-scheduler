@@ -4,6 +4,8 @@ from loguru import logger
 import os
 from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
 from pydantic import BaseModel
 from typing import List
 import uvicorn
@@ -14,6 +16,7 @@ import json
 
 # Configure FastAPI app
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 logger.info("Starting the application...")
 # Configuration for Kubernetes client
@@ -532,13 +535,12 @@ def list_all_deployments():
                     [f"{k}={v}" for k, v in d.spec.selector.match_labels.items()]
                 ),
             )
-            logger.debug(f"{len(replicasets.items)} replicasets found ")
+            # logger.debug(f"{len(replicasets.items)} replicasets found ")
             # Find the active ReplicaSet(s)
             active_rs = []
             for rs in replicasets.items:
                 if rs.metadata.owner_references:
                     for owner in rs.metadata.owner_references:
-                        print(rs)
                         if owner.kind == "Deployment" and owner.name == d.metadata.name:
                             active_rs.append(rs)
                             break
@@ -723,5 +725,5 @@ def health():
 if __name__ == "__main__":
     import uvicorn
 
-    logger.info("STARTING APP")
+    logger.info("Starting Workload Scheduler...")
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

@@ -11,7 +11,7 @@ rules:
   resources: ["deployments","statefulsets", "deployments/scale", "daemonsets" ]
   verbs: ["get", "list", "patch", "update"]
 - apiGroups: ["apps"]
-  resources: ["ReplicaSets"]
+  resources: ["replicasets"]
   verbs: ["get", "list", "patch", "delete"]
 
 ---
