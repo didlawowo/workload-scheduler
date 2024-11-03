@@ -206,7 +206,7 @@
                     {% for d in deploy %}
                     <tr>
                         <td>{{ d.name }}</td>
-                        <td>{{ d.namespace|upper }}</td>
+                        <td>{{ d.namespace }}</td>
 
                         <td>{{ d.replicas }}</td>
                         <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
@@ -293,7 +293,7 @@
                     {% for d in sts %}
                     <tr>
                         <td>{{ d.name }}</td>
-                        <td>{{ d.namespace|upper }}</td>
+                        <td>{{ d.namespace }}</td>
 
                         <td>{{ d.replicas }}</td>
                         <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
@@ -315,7 +315,7 @@
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
-                                    <strong>Has PVC:</strong> {{ "YES" if pod.has_pvc else 'No' }}<br>
+                                    <strong>Has PVC:</strong> {{ "Yes" if pod.has_pvc else 'No' }}<br>
                                     <strong>Requests:</strong>
                                     {% if pod.resource_requests %}
                                     <ul style="margin: 0px 0; padding-left: 20px;">
@@ -367,7 +367,7 @@
                     {% for d in ds %}
                     <tr>
                         <td>{{ d.name }}</td>
-                        <td>{{ d.namespace|upper }}</td>
+                        <td>{{ d.namespace }}</td>
                         <td>
                             {% for pod in d.pods %}
                             <div class="pod-details collapsed">

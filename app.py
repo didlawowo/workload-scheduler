@@ -28,7 +28,7 @@ else:
 # load_dotenv(".envrc")
 
 # Get the version from the environment variable
-version = "2.0.0"  # Default to '2.0.0' if not found
+version = "2.1.0"  # Default to '2.0.0' if not found
 logger.info(f"Version: {version}")
 # Kubernetes API clients
 apps_v1 = client.AppsV1Api()
@@ -330,14 +330,14 @@ def patch_argocd_application(token, app_name, enable_auto_sync):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def status(request: Request):
+def status(request: Request):
     """
     Fetches all Deployments /   and renders them using a Jinja2 template.
     """
     logger.info("Fetching Deployments, Daemonets and StatefulSets...")
-    deployment_list = await list_all_deployments()
-    sts_list = await list_all_sts()
-    ds_list = await list_all_daemonsets()
+    deployment_list = list_all_deployments()
+    sts_list = list_all_sts()
+    ds_list = list_all_daemonsets()
 
     # write result to filesystem
     # with open("deployment.json", "w") as f:
@@ -364,7 +364,40 @@ async def status(request: Request):
     )
 
 
-async def list_all_daemonsets():
+@app.get("/delete-rs")
+def delete_rs_zero():
+    """
+    Deletes all ReplicaSets with desired replicas set to 0.
+    """
+    try:
+        namespaces = core_v1.list_namespace()
+        deleted_replicasets = []
+
+        for ns in namespaces.items:
+            if ns.metadata.name not in protected_namespaces:
+                replicasets = apps_v1.list_namespaced_replica_set(ns.metadata.name)
+                for rs in replicasets.items:
+                    if rs.spec.replicas == 0:
+                        apps_v1.delete_namespaced_replica_set(
+                            name=rs.metadata.name, namespace=rs.metadata.namespace
+                        )
+                        deleted_replicasets.append(
+                            {
+                                "name": rs.metadata.name,
+                                "namespace": rs.metadata.namespace,
+                            }
+                        )
+
+        logger.info(
+            f"Deleted {len(deleted_replicasets)} ReplicaSets with 0 desired replicas"
+        )
+        return {"status": "success", "deleted_replicasets": len(deleted_replicasets)}
+    except client.exceptions.ApiException as e:
+        logger.error(f"Error deleting ReplicaSets: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+
+def list_all_daemonsets():
     """
     Returns the status of all DaemonSets in all namespaces, including pod information.
     """
@@ -472,7 +505,7 @@ async def list_all_daemonsets():
         return {"status": "error", "message": str(e)}
 
 
-async def list_all_deployments():
+def list_all_deployments():
     """
     Returns the status of all Deployments in all namespaces, including pod information.
     """
@@ -500,7 +533,7 @@ async def list_all_deployments():
                     [f"{k}={v}" for k, v in d.spec.selector.match_labels.items()]
                 ),
             )
-
+            logger.debug(f"{len(replicasets.items)} replicasets found ")
             # Find the active ReplicaSet(s)
             active_rs = []
             for rs in replicasets.items:
@@ -577,7 +610,7 @@ async def list_all_deployments():
         return {"status": "error", "message": str(e)}
 
 
-async def list_all_sts():
+def list_all_sts():
     """
     Returns the status of all statefullset in all namespaces.
     """
