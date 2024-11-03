@@ -512,15 +512,14 @@ def list_all_deployments():
     try:
         deployment = apps_v1.list_deployment_for_all_namespaces(watch=False)
         deployment_list = []
-        logger.debug(f"{len(deployment.items)} deploy found ")
+        logger.debug(f"{len(deployment.items)} deployments found ")
 
         for d in deployment.items:
             # Skip if not matching our criteria
-            logger.debug(d.metadata.name)
-            if d.metadata.name == "workload-scheduler":
-                continue
+
             if (
-                d.metadata.labels is None
+                d.metadata.name == "workload-scheduler"
+                or d.metadata.labels is None
                 or d.metadata.namespace in protected_namespaces
                 or "argocd.argoproj.io/instance" not in d.metadata.labels
             ):
@@ -539,6 +538,7 @@ def list_all_deployments():
             for rs in replicasets.items:
                 if rs.metadata.owner_references:
                     for owner in rs.metadata.owner_references:
+                        print(rs)
                         if owner.kind == "Deployment" and owner.name == d.metadata.name:
                             active_rs.append(rs)
                             break
