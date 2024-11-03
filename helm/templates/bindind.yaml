@@ -4,12 +4,15 @@ kind: ClusterRole
 metadata:
   name: workload-scheduler-role
 rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
 - apiGroups: ["apps"]
-  resources: ["deployments","statefulsets", "deployments/scale" ]
+  resources: ["deployments","statefulsets", "deployments/scale", "daemonsets" ]
   verbs: ["get", "list", "patch", "update"]
 - apiGroups: ["apps"]
-  resources: ["daemonsets"]
-  verbs: ["get", "list", "patch", "update"]
+  resources: ["ReplicaSets"]
+  verbs: ["get", "list", "patch", "delete"]
 
 ---
 # Role binding definition (e.g., ingress-reader-binding.yaml)

@@ -607,6 +607,7 @@ def list_all_deployments():
         return deployment_list
 
     except client.exceptions.ApiException as e:
+        logger.error("Error fetching deployments: %s", e)
         return {"status": "error", "message": str(e)}
 
 
