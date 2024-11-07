@@ -1,9 +1,9 @@
 image:
   repository: fizzbuzz2/workload-scheduler
-  tag: "8dea774"
+  tag: "24192e8"
   pullPolicy: "Always"
   pullSecrets:
-  - name: registry-credentials
+    - name: registry-credentials
 domainName: "workload-scheduler.dc-tech.work"
 autoscaling:
   enabled: false
@@ -35,9 +35,9 @@ serviceAccount:
   #             restartPolicy: OnFailure
 application:
   ports:
-  - name: http
-    containerPort: 8000
-    protocol: TCP
+    - name: http
+      containerPort: 8000
+      protocol: TCP
   containerName: workload-scheduler
   command: []
   args: []
@@ -54,12 +54,12 @@ resources:
     cpu: 150m
     memory: 128Mi
 env:
-- name: ARGO_USERNAME
-  value: "admin"
-- name: ARGO_PASSWORD
-  value: "admin"
-- name: ARGOCD_API_URL
-  value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
+  - name: ARGO_USERNAME
+    value: "admin"
+  - name: ARGO_PASSWORD
+    value: "admin"
+  - name: ARGOCD_API_URL
+    value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
 volumeMounts: []
 volumes: []
 envFrom: []
