@@ -36,3 +36,4 @@ websocket-client==1.8.0
 Werkzeug==3.0.6
 
 python-dotenv
+UnleashClient

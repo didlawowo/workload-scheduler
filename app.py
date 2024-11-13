@@ -12,6 +12,7 @@ import uvicorn
 from typing import Any, Dict
 import requests
 import json
+from UnleashClient import UnleashClient
 
 
 # Configure FastAPI app
@@ -25,6 +26,20 @@ if os.getenv("KUBE_ENV") == "development":
 else:
     config.load_incluster_config()  # For running inside a cluster
     logger.info("Kubernetes in cluster configuration loaded.")
+
+
+def custom_fallback(feature_name: str, context: dict) -> bool:
+    return True
+
+
+unleashClient = UnleashClient(
+    url=os.getenv("UNLEASH_API_URL"),
+    app_name="workload-scheduler",
+    custom_headers={"Authorization": os.getenv("UNLEASH_API_TOKEN")},
+)
+
+unleashClient.initialize_client()
+unleashClient.is_enabled("debug", fallback_function=custom_fallback)
 
 
 # Load environment variables from .envrc file
