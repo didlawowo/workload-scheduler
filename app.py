@@ -46,7 +46,7 @@ unleashClient.is_enabled("debug", fallback_function=custom_fallback)
 # load_dotenv(".envrc")
 
 # Get the version from the environment variable
-version = "2.1.0"  # Default to '2.0.0' if not found
+version = "2.2.0"  # Default to '2.0.0' if not found
 logger.info(f"Version: {version}")
 # Kubernetes API clients
 apps_v1 = client.AppsV1Api()
@@ -356,14 +356,6 @@ def status(request: Request):
     deployment_list = list_all_deployments()
     sts_list = list_all_sts()
     ds_list = list_all_daemonsets()
-
-    # write result to filesystem
-    # with open("deployment.json", "w") as f:
-    #     json.dump(deployment_list, f)
-    # with open("sts.json", "w") as f:
-    #     json.dump(sts_list, f)
-    # with open("ds.json", "w") as f:
-    #     json.dump(ds_list, f)
 
     logger.success(
         f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)},  "
