@@ -3,7 +3,7 @@ image:
   tag: "d8c89ad"
   pullPolicy: "Always"
   pullSecrets:
-    - name: registry-credentials
+  - name: registry-credentials
 domainName: "workload-scheduler.dc-tech.work"
 autoscaling:
   enabled: false
@@ -16,9 +16,8 @@ strategy:
 serviceAccount:
   create: true
   name: workload-scheduler
-  # annotations:
-  #   iam.gke.io/gcp-service-account: workload-scheduler@gcp-project-id.iam.gserviceaccount.com
-  # cronJobs:
+
+cronJobs: []
   # - name: call-api
   #   schedule: "0 */3 * * *" # Runs every 3 hours
   #   jobTemplate:
@@ -35,9 +34,9 @@ serviceAccount:
   #             restartPolicy: OnFailure
 application:
   ports:
-    - name: http
-      containerPort: 8000
-      protocol: TCP
+  - name: http
+    containerPort: 8000
+    protocol: TCP
   containerName: workload-scheduler
   command: []
   args: []
@@ -54,12 +53,17 @@ resources:
     cpu: 150m
     memory: 128Mi
 env:
-  - name: ARGO_USERNAME
-    value: "admin"
-  - name: ARGO_PASSWORD
-    value: "admin"
-  - name: ARGOCD_API_URL
-    value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
+- name: ARGO_USERNAME
+  value: "admin"
+- name: ARGO_PASSWORD
+  value: "admin"
+- name: ARGOCD_API_URL
+  value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
+- name: UNLEASH_API_TOKEN
+  value: "user:022efd29bd5c6f386d46093b9a8fb22a65418314dd825414ff9c791b"
+- name: UNLEASH_API_URL
+  value: "http://unleash.kube-infra.svc.cluster.local:4242/api/"
+
 volumeMounts: []
 volumes: []
 envFrom: []
