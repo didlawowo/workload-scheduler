@@ -3,7 +3,7 @@ image:
   tag: "cda298c"
   pullPolicy: "Always"
   pullSecrets:
-    - name: registry-credentials
+  - name: registry-credentials
 domainName: "workload-scheduler.dc-tech.work"
 autoscaling:
   enabled: false
@@ -33,9 +33,9 @@ cronJobs: []
 #             restartPolicy: OnFailure
 application:
   ports:
-    - name: http
-      containerPort: 8000
-      protocol: TCP
+  - name: http
+    containerPort: 8000
+    protocol: TCP
   containerName: workload-scheduler
   command: []
   args: []
@@ -52,16 +52,16 @@ resources:
     cpu: 150m
     memory: 128Mi
 env:
-  - name: ARGO_USERNAME
-    value: "admin"
-  - name: ARGO_PASSWORD
-    value: "admin"
-  - name: ARGOCD_API_URL
-    value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
-  - name: UNLEASH_API_TOKEN
-    value: "user:022efd29bd5c6f386d46093b9a8fb22a65418314dd825414ff9c791b"
-  - name: UNLEASH_API_URL
-    value: "http://unleash.kube-infra.svc.cluster.local:4242/api/"
+- name: ARGO_USERNAME
+  value: "admin"
+- name: ARGO_PASSWORD
+  value: "admin"
+- name: ARGOCD_API_URL
+  value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
+- name: UNLEASH_API_TOKEN
+  value: "user:43fe3a38a9db8cd7649c47e2f9c6e1dcdaca2b563a3eded8d47b36fe"
+- name: UNLEASH_API_URL
+  value: "http://unleash.kube-infra.svc.cluster.local:4242/api/"
 volumeMounts: []
 volumes: []
 envFrom: []
