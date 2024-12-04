@@ -29,7 +29,7 @@ else:
 
 
 def custom_fallback(feature_name: str, context: dict) -> bool:
-    return True
+    return False
 
 
 unleashClient = UnleashClient(
