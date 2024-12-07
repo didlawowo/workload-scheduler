@@ -46,7 +46,7 @@ unleashClient.is_enabled("debug", fallback_function=custom_fallback)
 # load_dotenv(".envrc")
 
 # Get the version from the environment variable
-version = "2.2.0"  # Default to '2.0.0' if not found
+version = "2.2.1"  # Default to '2.0.0' if not found
 logger.info(f"Version: {version}")
 # Kubernetes API clients
 apps_v1 = client.AppsV1Api()
