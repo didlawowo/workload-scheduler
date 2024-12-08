@@ -2,7 +2,7 @@
 services:
     app:
       container_name: workload-scheduler
-      image: fizzbuzz2/workload-scheduler:v1.5.0
+      image: fizzbuzz2/workload-scheduler:v2.2.1
       ports:
         - "8000:8000"
       build:
