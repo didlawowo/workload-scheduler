@@ -85,7 +85,10 @@ def get_argocd_session_token():
     logger.info("Authenticating with Argo CD...")
     auth_payload = {"username": USERNAME, "password": PASSWORD}
     response = requests.post(
-        f"{ARGOCD_API_URL}/session", headers=headers, data=json.dumps(auth_payload)
+        f"{ARGOCD_API_URL}/session",
+        headers=headers,
+        data=json.dumps(auth_payload),
+        timeout=5,
     )
 
     if response.status_code == 200:
@@ -311,7 +314,9 @@ def patch_argocd_application(token, app_name, enable_auto_sync):
     # Example usage
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    res = requests.get(f"{ARGOCD_API_URL}/applications/{app_name}", headers=headers)
+    res = requests.get(
+        f"{ARGOCD_API_URL}/applications/{app_name}", headers=headers, timeout=3
+    )
     app_config = res.json()
     # app_config.setdefault("spec", {}).setdefault("syncPolicy", {})
     logger.debug(app_config["spec"])
@@ -334,6 +339,7 @@ def patch_argocd_application(token, app_name, enable_auto_sync):
         f"{ARGOCD_API_URL}/applications/{app_name}?validate=false",
         headers=headers,
         data=json.dumps(app_config),
+        timeout=10,
     )
 
     if response.status_code == 200:
@@ -343,7 +349,9 @@ def patch_argocd_application(token, app_name, enable_auto_sync):
         logger.error(
             f"Failed to patch the application. Status code: {response.status_code}, Response: {response.text}"
         )
-    res = requests.get(f"{ARGOCD_API_URL}/applications/{app_name}", headers=headers)
+    res = requests.get(
+        f"{ARGOCD_API_URL}/applications/{app_name}", headers=headers, timeout=5
+    )
     logger.info(f"policy {res.json()['spec']['syncPolicy']}")
 
 
@@ -453,18 +461,18 @@ def list_all_daemonsets():
                             )
 
                             # Get node conditions if available
-                            node_conditions = {}
-                            if pod.spec.node_name:
-                                try:
-                                    node = core_v1.read_node(pod.spec.node_name)
-                                    node_conditions = {
-                                        cond.type: cond.status
-                                        for cond in node.status.conditions
-                                    }
-                                except client.exceptions.ApiException:
-                                    logger.warning(
-                                        f"Could not fetch conditions for node {pod.spec.node_name}"
-                                    )
+                            # node_conditions = {}
+                            # if pod.spec.node_name:
+                            #     try:
+                            #         node = core_v1.read_node(pod.spec.node_name)
+                            #         node_conditions = {
+                            #             cond.type: cond.status
+                            #             for cond in node.status.conditions
+                            #         }
+                            #     except client.exceptions.ApiException:
+                            #         logger.warning(
+                            #             f"Could not fetch conditions for node {pod.spec.node_name}"
+                            #         )
 
                             pod_info.append(
                                 {
@@ -474,7 +482,7 @@ def list_all_daemonsets():
                                     "has_pvc": has_pvc,
                                     "resource_requests": requests,
                                     "resource_limits": limits,
-                                    "node_conditions": node_conditions,
+                                    "node_conditions": "",  # node_conditions,
                                     "start_time": pod.status.start_time.isoformat()
                                     if pod.status.start_time
                                     else None,
@@ -700,7 +708,8 @@ def list_all_sts():
 
 @app.get("/live")
 def live():
-    return {"status": "ok"}
+    logger.info("Checking if the application is live...")
+    return {"status": "success", "message": "Application is live"}
 
 
 @app.get("/health")
