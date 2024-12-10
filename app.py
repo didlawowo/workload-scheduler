@@ -708,7 +708,7 @@ def list_all_sts():
 
 @app.get("/live")
 def live():
-    logger.info("Checking if the application is live...")
+    # logger.info("Checking if the application is live...")
     return {"status": "success", "message": "Application is live"}
 
 
