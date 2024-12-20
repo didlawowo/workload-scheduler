@@ -5,14 +5,55 @@ import os
 from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-
+import json
 from pydantic import BaseModel
 from typing import List
-import uvicorn
 from typing import Any, Dict
 import requests
-import json
+import sys
+import uvicorn
+import warnings
 from UnleashClient import UnleashClient
+
+
+def formatter(record):
+    """
+    Fonction de formatage personnalisée pour structurer les logs Loguru de manière compatible avec Datadog.
+    Cette fonction transforme directement le record en une chaîne JSON sans utiliser de format intermédiaire.
+    """
+    # Création de la structure de log directement à partir des données du record
+    log_data = {
+        "timestamp": record["time"].timestamp() * 1000,
+        "level": record["level"].name,
+        "message": record["message"],
+        "service": "workload-scheduler",
+        "logger": {
+            "name": record["name"],
+            "method": record["function"],
+            "file": record["file"].name,
+            "line": record["line"],
+        },
+        "process": {"pid": record["process"].id, "thread_name": record["thread"].name},
+    }
+
+    return json.dumps(log_data)
+
+
+# Suppression des handlers existants pour éviter tout conflit
+logger.remove()
+
+# Ajout du nouveau handler avec le formateur personnalisé
+# Notez l'utilisation de format="{message}" qui laisse notre formateur gérer la structure complète
+logger.add(
+    sys.stdout,
+    format="{message}",  # Format minimal
+    serialize=False,  # Désactivation de la sérialisation automatique
+    colorize=False,  # Désactivation de la coloration pour éviter les caractères d'échappement
+    catch=True,  # Capture les erreurs de logging
+)
+
+# Configuration du handler pour utiliser notre formateur
+logger = logger.patch(lambda record: record.update(message=formatter(record)))
 
 
 # Configure FastAPI app
@@ -78,6 +119,7 @@ headers = {
 }
 
 
+@logger.catch
 def get_argocd_session_token():
     """
     Authenticates with the Argo CD API using username and password to obtain a session token.
@@ -96,11 +138,11 @@ def get_argocd_session_token():
         # logger.debug(f"Session token: {session_token}")
         logger.success("Successfully authenticated with Argo CD.")
         return session_token
-    else:
-        logger.error(
-            f"Failed to authenticate with Argo CD. Status code: {response.status_code}, Response: {response.text}"
-        )
-        return None
+
+    logger.error(
+        f"Failed to authenticate with Argo CD. Status code: {response.status_code}, Response: {response.text}"
+    )
+    return None
 
 
 argo_session_token = get_argocd_session_token()
@@ -739,7 +781,18 @@ def health():
 
 # Run the application
 if __name__ == "__main__":
-    import uvicorn
+    # Configurer Uvicorn avec notre système de logging
+    uvicorn_config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        log_config=None,  # Désactiver la configuration de log par défaut
+    )
+
+    # Supprimer l'avertissement de Unleash
+    warnings.filterwarnings("ignore", category=UserWarning, module="unleash")
+
+    server = uvicorn.Server(uvicorn_config)
+    server.run()
 
     logger.info("Starting Workload Scheduler...")
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
