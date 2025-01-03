@@ -1,6 +1,6 @@
 image:
   repository: fizzbuzz2/workload-scheduler
-  tag: "18457f5"
+  tag: "d90f128"
   pullPolicy: "Always"
   pullSecrets:
     - name: registry-credentials
