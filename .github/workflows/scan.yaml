@@ -1,4 +1,4 @@
-name: Sonar
+name: Build
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
 
 
 jobs:
-  scan:
-    name: Sonar scanner
-    runs-on: arc-runner-set-workload
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-latest
     
     steps:
       - uses: actions/checkout@v4
@@ -19,4 +19,9 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-    
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # - uses: sonarsource/sonarqube-quality-gate-action@master
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
