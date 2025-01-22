@@ -13,7 +13,6 @@ import requests
 import sys
 import uvicorn
 import warnings
-from UnleashClient import UnleashClient
 
 
 os.environ["TZ"] = "Europe/Paris"
@@ -75,19 +74,20 @@ else:
 def custom_fallback(feature_name: str, context: dict) -> bool:
     return False
 
+if os.getenv("UNLEASH_API_URL"):
+    from UnleashClient import UnleashClient
+    logger.info("Unleash client initialized.")
+    unleashClient = UnleashClient(
+        url=os.getenv("UNLEASH_API_URL"),
+        app_name="workload-scheduler",
+        custom_headers={"Authorization": os.getenv("UNLEASH_API_TOKEN")},
+    )
 
-unleashClient = UnleashClient(
-    url=os.getenv("UNLEASH_API_URL"),
-    app_name="workload-scheduler",
-    custom_headers={"Authorization": os.getenv("UNLEASH_API_TOKEN")},
-)
-
-unleashClient.initialize_client()
-unleashClient.is_enabled("debug", fallback_function=custom_fallback)
+    unleashClient.initialize_client()
+    unleashClient.is_enabled("debug", fallback_function=custom_fallback)
 
 
-# Load environment variables from .envrc file
-# load_dotenv(".envrc")
+ 
 
 # Get the version from the environment variable
 version = "2.3.0"  #
