@@ -66,6 +66,8 @@ logger.info("Starting the application...")
 # Configuration for Kubernetes client
 if os.getenv("KUBE_ENV") == "development":
     config.load_kube_config()  # For local development
+    logger.info("Kubernetes local configuration loaded.")
+
 else:
     config.load_incluster_config()  # For running inside a cluster
     logger.info("Kubernetes in cluster configuration loaded.")
@@ -87,10 +89,9 @@ if os.getenv("UNLEASH_API_URL"):
     unleashClient.is_enabled("debug", fallback_function=custom_fallback)
 
 
- 
 
 # Get the version from the environment variable
-version = "2.3.0"  #
+version = "2.3.1"  #
 logger.info(f"Version: {version}")
 # Kubernetes API clients
 apps_v1 = client.AppsV1Api()
@@ -120,7 +121,6 @@ PASSWORD = os.getenv("ARGOCD_PASSWORD", "admin")
 headers = {
     "Content-Type": "application/json",
 }
-
 
 @logger.catch
 def get_argocd_session_token():

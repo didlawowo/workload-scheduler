@@ -12,7 +12,7 @@ services:
         context: . # docker-compose.yml in current directory
       environment:
         - KUBE_ENV=development
-      volumes:
-        - .:/app
+      # volumes:
+      #   - .:/app
       env_file:
         - .envrc

@@ -14,11 +14,25 @@ tasks:
     cmds:
     - docker compose up -d
 
+  show-logs:
+    desc: Show logs from the running container
+    cmds:
+    - docker compose logs -f
+
   run-dev:
     desc: Run the app localy
     cmds:
     - pipenv run python app.py
 
+  shell:
+    desc: Open a shell in the running container
+    cmds:
+    - pipenv shell
+
+  helm-template:
+    desc: template helm chart
+    cmds:
+    - helm template ./helm
 
 default:
   desc: List available tasks
