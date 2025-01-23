@@ -3,7 +3,7 @@ image:
   tag: "3c5bd89"
   pullPolicy: "Always"
   pullSecrets:
-    - name: registry-credentials
+  - name: registry-credentials
 domainName: "workload-scheduler.dc-tech.work"
 autoscaling:
   enabled: false
@@ -17,25 +17,25 @@ serviceAccount:
   create: true
   name: workload-scheduler
 cronJobs:
-  - name: call-api
-    schedule: "0 */3 * * *" # Runs every 3 hours
-    jobTemplate:
-      spec:
-        template:
-          spec:
-            containers:
-              - name: kubectl-container
-                image: curlimages/curl:7.83.1
-                command: ["/bin/bash"]
-                args:
-                  - -c
-                  - curl -X POST http://workload-scheduler:8000/delete-rs
-                restartPolicy: OnFailure
+- name: call-api
+  schedule: "0 */3 * * *" # Runs every 3 hours
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: kubectl-container
+            image: curlimages/curl:7.83.1
+            command: [ "/bin/bash" ]
+            args:
+            - -c
+            - curl -X POST http://workload-scheduler:8000/delete-rs
+            restartPolicy: OnFailure
 application:
   ports:
-    - name: http
-      containerPort: 8000
-      protocol: TCP
+  - name: http
+    containerPort: 8000
+    protocol: TCP
   containerName: workload
   command: []
   args: []
@@ -46,20 +46,20 @@ service:
   portName: http
 resources:
   limits:
-    cpu: 500m
+    cpu: 700m
     memory: 256Mi
   requests:
-    cpu: 150m
+    cpu: 250m
     memory: 128Mi
 env:
-  - name: ARGO_USERNAME
-    value: "admin"
-  - name: ARGO_PASSWORD
-    value: "admin"
-  - name: ARGOCD_API_URL
-    value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
-  - name: UNLEASH_API_TOKEN
-    value: "user:43fe3a38a9db8cd7649c47e2f9c6e1dcdaca2b563a3eded8d47b36fe"
+- name: ARGO_USERNAME
+  value: "admin"
+- name: ARGO_PASSWORD
+  value: "admin"
+- name: ARGOCD_API_URL
+  value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
+- name: UNLEASH_API_TOKEN
+  value: "user:43fe3a38a9db8cd7649c47e2f9c6e1dcdaca2b563a3eded8d47b36fe"
 # - name: UNLEASH_API_URL
 #   value: "http://unleash.kube-infra.svc.cluster.local:4242/api/"
 volumeMounts: []
@@ -73,7 +73,7 @@ livenessProbe:
     port: 8000
   initialDelaySeconds: 5
   periodSeconds: 30
-  timeoutSeconds: 1
+  timeoutSeconds: 3
   successThreshold: 1
   failureThreshold: 3
 readinessProbe:
@@ -83,6 +83,6 @@ readinessProbe:
     port: 8000
   initialDelaySeconds: 5
   periodSeconds: 30
-  timeoutSeconds: 3
+  timeoutSeconds: 5
   successThreshold: 1
   failureThreshold: 3

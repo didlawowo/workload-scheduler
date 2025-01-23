@@ -16,7 +16,9 @@ import warnings
 
 
 os.environ["TZ"] = "Europe/Paris"
-
+log_level = os.getenv("LOG_LEVEL", "INFO")
+logger.remove()
+logger.add(sys.stderr, level=log_level)
 
 def formatter(record):
     """
@@ -84,6 +86,7 @@ if os.getenv("UNLEASH_API_URL"):
         app_name="workload-scheduler",
         custom_headers={"Authorization": os.getenv("UNLEASH_API_TOKEN")},
     )
+    warnings.filterwarnings("ignore", category=UserWarning, module="unleash")
 
     unleashClient.initialize_client()
     unleashClient.is_enabled("debug", fallback_function=custom_fallback)
@@ -91,7 +94,7 @@ if os.getenv("UNLEASH_API_URL"):
 
 
 # Get the version from the environment variable
-version = "2.3.1"  #
+version = "2.3.2"  #
 logger.info(f"Version: {version}")
 # Kubernetes API clients
 apps_v1 = client.AppsV1Api()
@@ -789,13 +792,10 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=8000,
-        log_config=None,  # Désactiver la configuration de log par défaut
     )
 
-    # Supprimer l'avertissement de Unleash
-    warnings.filterwarnings("ignore", category=UserWarning, module="unleash")
 
     server = uvicorn.Server(uvicorn_config)
     server.run()
 
-    logger.info("Starting Workload Scheduler...")
+    logger.success("Started Workload Scheduler...")
