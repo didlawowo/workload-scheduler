@@ -21,8 +21,8 @@ spec:
           labels: {{- include "application.labels" $ | nindent 12 }}
         spec:
           restartPolicy: {{ $job.restartPolicy }}
-          # nodeSelector: 
-            # kubernetes.io/arch: "amd64"
+          nodeSelector: 
+            {{ $job.nodeSelector | toYaml | nindent 12 }}
           serviceAccountName: {{ default (include "application.fullname" $ ) $.Values.serviceAccount.name }}
           containers:
             - name: {{ $name }}
