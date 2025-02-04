@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-and-update:
-    runs-on: ubuntu-latest
+    runs-on:  arc-runner-set-workload-scheduler
     permissions:
       contents: write
     

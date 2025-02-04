@@ -1,15 +1,14 @@
-name: Build
+name: Scan
 
 on:
   push:
     branches:
       - main
 
-
 jobs:
-  build:
+  scan:
     name: Build and analyze
-    runs-on: ubuntu-latest
+    runs-on:  arc-runner-set-workload-scheduler
     
     steps:
       - uses: actions/checkout@v4
