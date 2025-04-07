@@ -117,7 +117,7 @@ class Workloads(BaseModel):
     workloads: List[str]
 
 
-ARGOCD_API_URL = os.getenv("ARGOCD_API_URL", "http://localhost:8080/api/v1")
+ARGOCD_API_URL = os.getenv("ARGOCD_API_URL", "https://localhost:8080/api/v1")
 USERNAME = os.getenv("ARGOCD_USERNAME", "admin")
 PASSWORD = os.getenv("ARGOCD_PASSWORD", "admin")
 
@@ -151,7 +151,7 @@ def get_argocd_session_token():
     return None
 
 
-argo_session_token = get_argocd_session_token()
+# argo_session_token = get_argocd_session_token()
 
 
 @app.get("/manage-all/{mode}")
@@ -212,7 +212,7 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
     if resource_type == "deploy":
         try:
             d = apps_v1.read_namespaced_deployment(name, namespace)
-            application_name = d.metadata.labels["argocd.argoproj.io/instance"]
+            # application_name = d.metadata.labels["argocd.argoproj.io/instance"]
 
         except client.exceptions.ApiException as e:
             return {"status": "error", "message": str(e)}
@@ -226,7 +226,7 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
     elif resource_type == "sts":
         try:
             sts = apps_v1.read_namespaced_stateful_set(name, namespace)
-            application_name = sts.metadata.labels["argocd.argoproj.io/instance"]
+            # application_name = sts.metadata.labels["argocd.argoproj.io/instance"]
 
         except client.exceptions.ApiException as e:
             return {"status": "error", "message": str(e)}
@@ -243,15 +243,15 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
     try:
         # Step 1: Disable auto-sync
         if resource_type != "ds":
-            logger.info(f"Disabling auto-sync... for application '{application_name}'")
-            patch_argocd_application(
-                token=argo_session_token,
-                app_name=application_name,
-                enable_auto_sync=False,
-            )
-            logger.success(
-                f"Auto-sync disabled for application '{application_name}'. Proceeding with scaling down the Deployment."
-            )
+            # logger.info(f"Disabling auto-sync... for application '{application_name}'")
+            # patch_argocd_application(
+            #     token=argo_session_token,
+            #     app_name=application_name,
+            #     enable_auto_sync=False,
+            # )
+            # logger.success(
+            #     f"Auto-sync disabled for application '{application_name}'. Proceeding with scaling down the Deployment."
+            # )
             # Define the patch to scale the Deployment
 
             body = {"spec": {"replicas": 0}}
@@ -309,17 +309,17 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
 
     # restore auto-sync
     try:
-        application_name = c.metadata.labels["argocd.argoproj.io/instance"]
+        # application_name = c.metadata.labels["argocd.argoproj.io/instance"]
         # Step 1: enable auto-sync
-        logger.info(f"Enabling auto-sync for application '{application_name}'")
-        patch_argocd_application(
-            token=argo_session_token,
-            app_name=application_name,
-            enable_auto_sync=True,
-        )
-        logger.success(
-            f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
-        )
+        # logger.info(f"Enabling auto-sync for application '{application_name}'")
+        # patch_argocd_application(
+        #     token=argo_session_token,
+        #     app_name=application_name,
+        #     enable_auto_sync=True,
+        # )
+        # logger.success(
+        #     f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
+        # )
         # Define the patch to scale the Deployment
         body = {"spec": {"replicas": 1}}
         if resource_type == "deploy":
@@ -585,9 +585,9 @@ def list_all_deployments():
 
             if (
                 d.metadata.name == "workload-scheduler"
-                or d.metadata.labels is None
+                # or d.metadata.labels is None
                 or d.metadata.namespace in protected_namespaces
-                or "argocd.argoproj.io/instance" not in d.metadata.labels
+                # or "argocd.argoproj.io/instance" not in d.metadata.labels
             ):
                 continue
 
@@ -624,11 +624,11 @@ def list_all_deployments():
                             rs.metadata.name == owner.name for rs in active_rs
                         ):
                             # Check for PVCs
-                            has_pvc = any(
-                                volume.persistent_volume_claim
-                                for volume in pod.spec.volumes
-                                if hasattr(volume, "persistent_volume_claim")
-                            )
+                            # has_pvc = any(
+                            #     volume.persistent_volume_claim
+                            #     for volume in pod.spec.volumes
+                            #     if hasattr(volume, "persistent_volume_claim")
+                            # )
 
                             # Get resource requests and limits
                             resources = pod.spec.containers[0].resources
@@ -648,7 +648,7 @@ def list_all_deployments():
                                     "name": pod.metadata.name,
                                     "node": pod.spec.node_name,
                                     "status": pod.status.phase,
-                                    "has_pvc": has_pvc,
+                                    "has_pvc": False,
                                     "resource_requests": requests,
                                     "resource_limits": limits,
                                     "replicaset": owner.name,
