@@ -1,14 +1,16 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
-from sqlalchemy.ext.declarative import declarative_base
+from sqlmodel import SQLModel, Field
+from typing import Optional
+from datetime import datetime
 
-Base = declarative_base()
+class WorkloadSchedule(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    start_time: datetime
+    end_time: datetime
+    status: str = "scheduled"
+    active: bool = True
 
-class WorkloadSchedule(Base):
-    __tablename__ = 'workload_schedules'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    start_time = Column(DateTime)
-    end_time = Column(DateTime)
-    status = Column(String)
-    active = Column(Boolean, default=True)
+class WorkloadScheduleCreate(SQLModel):
+    name: str
+    start_time: datetime
+    end_time: datetime

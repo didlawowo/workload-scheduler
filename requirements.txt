@@ -36,6 +36,7 @@ websocket-client==1.8.0
 Werkzeug==3.0.6
 sqlalchemy==2.0.40
 sqlite-utils==3.38
+sqlmodel==0.0.24
 
 python-dotenv
 UnleashClient
