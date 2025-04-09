@@ -34,6 +34,8 @@ urllib3==1.26.20
 uvicorn==0.32.0
 websocket-client==1.8.0
 Werkzeug==3.0.6
+sqlalchemy==2.0.40
+sqlite-utils==3.38
 
 python-dotenv
 UnleashClient
