@@ -1,18 +1,54 @@
+version: '3'
 
 services:
-    app:
-      container_name: workload-scheduler
-      image: fizzbuzz2/workload-scheduler:v2.2.1
-      ports:
-        - "8000:8000"
-      build:
-        platforms:
-          # - linux/amd64
-          - linux/arm64
-        context: . # docker-compose.yml in current directory
-      environment:
-        - KUBE_ENV=development
-      # volumes:
-      #   - .:/app
-      env_file:
-        - .envrc
+  workload-scheduler:
+    image: python:3.9-slim
+    container_name: workload-scheduler
+    command: "python src/main.py"
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Europe/Paris
+      - PYTHONPATH=/app
+    restart: unless-stopped
+    volumes:
+      - ./:/app
+      - sqlite-data:/app/data
+    working_dir: /app
+
+  # Visualiseur SQLite pour la base de données du scheduler
+  sqlite-web:
+    image: fizzbuzz2/sqlite-viewer:3.10
+    container_name: scheduler-sqlite-viewer
+    ports:
+      - "8081:8080"
+    depends_on:
+      - workload-scheduler
+    environment:
+      - SQLITE_DATABASE=/data/sqlite/scheduler.db
+      - TZ=Europe/Paris
+    volumes:
+      - sqlite-data:/data:rw
+    restart: unless-stopped
+
+  # Portainer pour la gestion des conteneurs
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    ports:
+      - "9000:9000"
+    command: --no-analytics
+    environment:
+      - TZ=Europe/Paris
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+
+volumes:
+  sqlite-data:
+  portainer-data:
+
+networks:
+  default:
+    name: workload-scheduler-network
