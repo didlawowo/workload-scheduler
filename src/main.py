@@ -13,6 +13,9 @@ import requests
 import sys
 import uvicorn
 import warnings
+from api.routes import router
+from core.init_db import init_db
+
 
 
 os.environ["TZ"] = "Europe/Paris"
@@ -62,7 +65,8 @@ logger = logger.patch(lambda record: record.update(message=formatter(record)))
 
 # Configure FastAPI app
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="src/static"), name="static")
+app.include_router(router=router)
 
 logger.info("Starting the application...")
 # Configuration for Kubernetes client
@@ -785,6 +789,7 @@ def health():
         return {"status": "error", "message": str(e)}
 
 
+
 # Run the application
 if __name__ == "__main__":
     # Configurer Uvicorn avec notre système de logging
@@ -792,9 +797,10 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=8000,
+        reload=True
     )
 
-
+    init_db()
     server = uvicorn.Server(uvicorn_config)
     server.run()
 

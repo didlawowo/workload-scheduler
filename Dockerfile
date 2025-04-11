@@ -1,13 +1,19 @@
-FROM python:3.12.0-alpine
+FROM python:3.9-slim
 
 WORKDIR /app
-RUN apk update && apk upgrade
-COPY requirements.txt /app/requirements.txt
-RUN pip install --upgrade pip uv
-RUN uv pip install --system -r requirements.txt
 
-COPY . /app
+# Installation des dépendances
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
+# Copie du code source
+COPY . .
+
+# Création des répertoires nécessaires
+RUN mkdir -p data/sqlite
+
+# Exposition du port
 EXPOSE 8000
 
-CMD ["uvicorn",  "app:app", "--host", "0.0.0.0"]
+# Commande de démarrage
+CMD ["python", "main.py"]
