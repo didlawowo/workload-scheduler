@@ -9,11 +9,3 @@ class WorkloadSchedule(SQLModel, table=True):
     end_time: datetime
     status: str = "scheduled"
     active: bool = True
-
-class WorkloadScheduleCreate(SQLModel):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    start_time: datetime
-    end_time: datetime
-    status: str = "scheduled"
-    active: bool = True
