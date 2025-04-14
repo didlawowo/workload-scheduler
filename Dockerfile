@@ -1,5 +1,4 @@
-FROM python:3.9-slim
-
+FROM python:3.12.0-alpine
 WORKDIR /app
 
 # Installation des dépendances
@@ -7,7 +6,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copie du code source
-COPY . .
+COPY src .
 
 # Création des répertoires nécessaires
 RUN mkdir -p data/sqlite

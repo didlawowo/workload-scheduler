@@ -15,7 +15,13 @@ services:
       - ./:/app
       - sqlite-data:/app/data
     working_dir: /app
-
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  
   # Visualiseur SQLite pour la base de données du scheduler
   sqlite-web:
     image: fizzbuzz2/sqlite-viewer:3.10
@@ -31,23 +37,8 @@ services:
       - sqlite-data:/data:rw
     restart: unless-stopped
 
-  # Portainer pour la gestion des conteneurs
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    ports:
-      - "9000:9000"
-    command: --no-analytics
-    environment:
-      - TZ=Europe/Paris
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer-data:/data
-
 volumes:
   sqlite-data:
-  portainer-data:
 
 networks:
   default:

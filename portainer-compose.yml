@@ -1,0 +1,18 @@
+# Portainer pour la gestion des conteneurs
+version: '3'
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    ports:
+      - "9000:9000"
+    command: --no-analytics
+    environment:
+      - TZ=Europe/Paris
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+
+volumes:
+  portainer-data:
