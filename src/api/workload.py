@@ -5,12 +5,36 @@ from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from typing import Any, Dict
-from core.config import apps_v1, core_v1, protected_namespaces, shutdown_label_selector
-from utils.kub_list import list_all_deployments, list_all_sts
+from utils.config import apps_v1, core_v1, protected_namespaces, shutdown_label_selector
+from core.kub_list import list_all_deployments, list_all_sts
+from pydantic import BaseModel
 
-workload = APIRouter()
+class PodStatus(BaseModel):
+    name: str
+    status: str
+    node: str
 
-@workload.get("/manage-all/{mode}")
+class ReplicaSetResponse(BaseModel):
+    status: str
+    deleted_replicasets: int = None
+    message: str = None
+
+class WorkloadResponse(BaseModel):
+    status: str
+    message: str
+
+class BulkActionResponse(BaseModel):
+    message: str
+
+workload = APIRouter(tags=["Workload Management"])
+
+
+@workload.get(
+    "/manage-all/{mode}",
+    response_model=BulkActionResponse,
+    summary="Manage all deployments and statefulsets",
+    description="Scale up or down all deployments and statefulsets in the cluster"
+)
 async def manage_all_deployments(mode: str) -> Dict[str, Any]:
     logger.info("Received request to manage all workloads.")
     logger.info(f"mode: {mode}")
@@ -51,7 +75,12 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
         logger.error(f"Error while scaling down all workload Error: {e}")
 
 
-@workload.get("/shutdown/{resource_type}/{namespace}/{name}")
+@workload.get(
+    "/shutdown/{resource_type}/{namespace}/{name}",
+    response_model=WorkloadResponse,
+    summary="Shutdown a specific resource",
+    description="Scale down a specific deployment or statefulset to 0 replicas"
+)
 async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[str, Any]:
     """
     shutdown the specified Deployment, considering protected namespaces and labels.
@@ -134,7 +163,12 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
         return {"status": "error", "message": str(e)}
 
 
-@workload.get("/up/{resource_type}/{namespace}/{name}")
+@workload.get(
+    "/up/{resource_type}/{namespace}/{name}",
+    response_model=WorkloadResponse,
+    summary="Scale up a specific resource",
+    description="Scale up a deployment, statefulset, or daemonset"
+)
 async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[str, Any]:
     """
     scale up the specified Deployment, considering protected namespaces and labels.
@@ -204,7 +238,12 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
         return {"status": "error", "message": str(e)}
 
 
-@workload.get("/delete-rs")
+@workload.get(
+    "/delete-rs",
+    response_model=ReplicaSetResponse,
+    summary="Delete ReplicaSets with zero replicas",
+    description="Deletes all ReplicaSets with desired replicas set to 0"
+)
 def delete_rs_zero():
     """
     Deletes all ReplicaSets with desired replicas set to 0.
@@ -237,13 +276,22 @@ def delete_rs_zero():
         return {"status": "error", "message": str(e)}
 
 
-@workload.get("/live")
+@workload.get(
+    "/live",
+    response_model=WorkloadResponse,
+    summary="Application liveness check",
+    description="Check if the application is live"
+)
 def live():
     # logger.info("Checking if the application is live...")
     return {"status": "success", "message": "Application is live"}
 
 
-@workload.get("/health")
+@workload.get(
+    "/health",
+    summary="Kubernetes health check",
+    description="Returns the status of all sts in all namespaces."
+)
 def health():
     """
     Returns the status of all sts in all namespaces.
