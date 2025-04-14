@@ -12,8 +12,8 @@ import uvicorn
 import warnings
 from api.scheduler import scheduler
 from api.workload import workload
-from utils.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
-from core.config import apps_v1, core_v1, protected_namespaces
+from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
+from utils.config import apps_v1, core_v1, protected_namespaces
 from core.init_db import init_db
 
 
