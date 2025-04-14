@@ -270,6 +270,10 @@
                             <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
                                 class="btn btn-success">Scale Up</button>
                         </td>
+                        <td>
+                            <button onclick="edit_prog('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                                class="btn btn-danger">Programme</button>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -424,6 +428,25 @@
             }
 
             function scale(type, name, namespace, action) {
+                let url = ``;
+                if (action === 'down') {
+                    url = `/shutdown/${type}/${namespace}/${name}`;
+                } else if (action === 'up') {
+                    url = `/up/${type}/${namespace}/${name}`;
+                } else if (action === 'down-all') {
+                    url = `/manage-all/down`;
+                } else if (action === 'up-all') {
+                    url = `/manage-all/up`;
+                }
+                fetch(url, { method: 'GET' })
+                    .then(response => response.json())
+                    .then(data => {
+                        window.location.reload();
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+
+            function edit_prog(type, name, namespace, action) {
                 let url = ``;
                 if (action === 'down') {
                     url = `/shutdown/${type}/${namespace}/${name}`;
