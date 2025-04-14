@@ -21,8 +21,9 @@ tasks:
 
   run-dev:
     desc: Run the app localy
+    dir: src
     cmds:
-    - pipenv run python src/core/app.py
+    - pipenv run python main.py
 
   shell:
     desc: Open a shell in the running container
