@@ -81,7 +81,7 @@ Le serveur est configuré pour s'exécuter sur le port 8000 et est accessible de
 Pour démarrer l'application, exécutez :
 
 ```bash
-uvicorn src.main:app --reload
+uvicorn main:app --reload
 ```
 
 L'application démarrera sur `http://0.0.0.0:8000`.
