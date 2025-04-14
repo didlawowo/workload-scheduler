@@ -1,4 +1,4 @@
-FROM python:3.12.0-alpine
+FROM python:3.12.10-alpine
 WORKDIR /app
 
 # Installation des dépendances

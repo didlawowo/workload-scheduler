@@ -14,3 +14,5 @@ __pycache__
 sonar-project.properties
 static-analysis.datadog.yml
 taskfile.yaml
+src/tests
+**/__pycache__

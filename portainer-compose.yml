@@ -1,5 +1,4 @@
 # Portainer pour la gestion des conteneurs
-version: '3'
 services:
   portainer:
     image: portainer/portainer-ce:latest

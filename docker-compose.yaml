@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   workload-scheduler:
     image: python:3.9-slim
