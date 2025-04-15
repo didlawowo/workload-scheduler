@@ -1,6 +1,8 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
+from pydantic import field_validator
+from crontab import CronSlices
 
 class WorkloadSchedule(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -9,3 +11,11 @@ class WorkloadSchedule(SQLModel, table=True):
     end_time: datetime
     status: str = "scheduled"
     active: bool = True
+    cron: Optional[str] = None
+    
+    @field_validator("cron")
+    @classmethod
+    def validate_cron(cls, v):
+        if v is not None and not CronSlices.is_valid(v):
+            raise ValueError("Invalid CRON expression")
+        return v
