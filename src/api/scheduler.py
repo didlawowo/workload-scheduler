@@ -6,6 +6,7 @@ from core.models import WorkloadSchedule
 from icecream import ic
 from datetime import datetime
 from typing import List
+from crontab import CronSlices
 
 scheduler = APIRouter(tags=["Schedule Management"])
 
@@ -34,20 +35,30 @@ def create_schedule(
 ):
     try:
         data = schedule.model_dump()
+        
         if isinstance(data["start_time"], str):
             data["start_time"] = datetime.fromisoformat(data["start_time"])
         if isinstance(data["end_time"], str):
             data["end_time"] = datetime.fromisoformat(data["end_time"])
             
+        if data.get("cron"):
+            if not CronSlices.is_valid(data["cron"]):
+                raise ValueError("Invalid CRON expression")
+        
         new_schedule = WorkloadSchedule(**data)
         add_schedule(new_schedule)
-        logger.success("POST /schedules")
-        return {"status": "created"}
+        
+        logger.success(f"POST /schedules - Created schedule with name: {new_schedule.name}")
+        return {"status": "created", "id": new_schedule.id}
+    except ValueError as ve:
+        ic(ve)
+        logger.error(f"Validation error: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         ic(e)
         logger.error(f"Error creating schedule: {e}")
-        raise HTTPException(status_code=400)
-        
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @scheduler.put(
     "/schedules/{schedule_id}",
     response_model=ScheduleResponse,
