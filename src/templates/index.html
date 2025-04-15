@@ -158,6 +158,89 @@
         transition: width 0.3s ease;
     }
 
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 5px;
+    }
+    
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .close:hover {
+        color: black;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
+    input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    
+    .error {
+        color: red;
+        font-size: 12px;
+        margin-top: 5px;
+        display: none;
+    }
+    
+    .cron-helper {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        margin-top: 10px;
+        font-size: 12px;
+    }
+    
+    .actions {
+        margin-top: 20px;
+        text-align: right;
+    }
+    
+    .save-btn {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .cancel-btn {
+        background-color: #6c757d;
+        color: white;
+        margin-right: 10px;
+    }
+
     @media (max-width: 768px) {
         .container {
             padding: 10px;
@@ -278,6 +361,37 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+
+        <div id="cronModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>Éditeur d'expression Cron</h3>
+                
+                <div class="form-group">
+                    <label for="cronExpression">Expression Cron:</label>
+                    <input type="text" id="cronExpression" placeholder="Ex: */5 * * * *">
+                    <div id="cronError" class="error">Expression Cron invalide</div>
+                    
+                    <div class="cron-helper">
+                        <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>
+                        <p><strong>Exemple:</strong> "*/5 * * * *" = toutes les 5 minutes</p>
+                        <p><strong>Exemple:</strong> "0 9 * * 1-5" = tous les jours ouvrables à 9h00</p>
+                    </div>
+                </div>
+                
+                <div id="modalInfo" class="form-group">
+                    <p><strong>Action:</strong> <span id="actionType"></span></p>
+                    <p><strong>Nom:</strong> <span id="resourceName"></span></p>
+                    <p><strong>Namespace:</strong> <span id="namespaceName"></span></p>
+                    <p><strong>Direction:</strong> <span id="directionType"></span></p>
+                </div>
+                
+                <div class="actions">
+                    <button id="cancelBtn" class="btn cancel-btn">Annuler</button>
+                    <button id="saveBtn" class="btn save-btn">Enregistrer</button>
+                </div>
+            </div>
         </div>
 
         <div class="section">
@@ -446,24 +560,112 @@
                     .catch(error => console.error('Error:', error));
             }
 
-            function edit_prog(type, name, namespace, action) {
-                let url = ``;
-                if (action === 'down') {
-                    url = `/shutdown/${type}/${namespace}/${name}`;
-                } else if (action === 'up') {
-                    url = `/up/${type}/${namespace}/${name}`;
-                } else if (action === 'down-all') {
-                    url = `/manage-all/down`;
-                } else if (action === 'up-all') {
-                    url = `/manage-all/up`;
-                }
-                fetch(url, { method: 'GET' })
-                    .then(response => response.json())
-                    .then(data => {
-                        window.location.reload();
-                    })
-                    .catch(error => console.error('Error:', error));
+            const modal = document.getElementById('cronModal');
+            const closeBtn = document.querySelector('.close');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const cronInput = document.getElementById('cronExpression');
+            const cronError = document.getElementById('cronError');
+            
+            const actionTypeEl = document.getElementById('actionType');
+            const resourceNameEl = document.getElementById('resourceName');
+            const namespaceNameEl = document.getElementById('namespaceName');
+            const directionTypeEl = document.getElementById('directionType');
+            
+            let currentCronValue = "*/5 * * * *";
+            let currentAction, currentName, currentNamespace, currentDirection;
+            
+            function isValidCron(expression) {
+
+                const pattern = /^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$/;
+                return pattern.test(expression);
             }
+            
+            function edit_prog(action, name, namespace, direction) {
+                currentAction = action;
+                currentName = name;
+                currentNamespace = namespace;
+                currentDirection = direction;
+                
+                actionTypeEl.textContent = action;
+                resourceNameEl.textContent = name;
+                namespaceNameEl.textContent = namespace;
+                directionTypeEl.textContent = direction;
+                
+                cronInput.value = currentCronValue;
+                cronError.style.display = 'none';
+                
+                modal.style.display = 'block';
+            }
+            
+            function closeModal() {
+                modal.style.display = 'none';
+            }
+            
+            closeBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+            
+            window.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+            
+            saveBtn.addEventListener('click', () => {
+                const expression = cronInput.value.trim();
+                
+                if (!isValidCron(expression)) {
+                    cronError.style.display = 'block';
+                    return;
+                }
+                
+                currentCronValue = expression;
+                console.log("Expression Cron enregistrée:", currentCronValue);
+                console.log("Pour:", currentAction, currentName, currentNamespace, currentDirection);
+                
+                // fetch('/api/schedules', { 
+                //   method: 'POST', 
+                //   headers: { 'Content-Type': 'application/json' },
+                //   body: JSON.stringify({ 
+                //     cron: currentCronValue,
+                //     action: currentAction,
+                //     name: currentName,
+                //     namespace: currentNamespace,
+                //     direction: currentDirection
+                //   }) 
+                // });
+                
+                alert(`Expression Cron enregistrée: ${currentCronValue}\nPour: ${currentAction}, ${currentName}, ${currentNamespace}, ${currentDirection}`);
+                closeModal();
+            });
+            
+            cronInput.addEventListener('input', () => {
+                const expression = cronInput.value.trim();
+                if (expression && !isValidCron(expression)) {
+                    cronError.style.display = 'block';
+                } else {
+                    cronError.style.display = 'none';
+                }
+            });
+
+            // function edit_prog(type, name, namespace, action) {
+            //     let url = ``;
+            //     if (action === 'down') {
+            //         url = `/shutdown/${type}/${namespace}/${name}`;
+            //     } else if (action === 'up') {
+            //         url = `/up/${type}/${namespace}/${name}`;
+            //     } else if (action === 'down-all') {
+            //         url = `/manage-all/down`;
+            //     } else if (action === 'up-all') {
+            //         url = `/manage-all/up`;
+            //     }
+            //     fetch(url, { method: 'GET' })
+            //         .then(response => response.json())
+            //         .then(data => {
+            //             window.location.reload();
+            //         })
+            //         .catch(error => console.error('Error:', error));
+            // }
 
             document.addEventListener("DOMContentLoaded", function () {
                 var progressBar = document.getElementById("progressBar");
