@@ -35,6 +35,16 @@ tasks:
     cmds:
     - helm template ./helm
 
+  apply-deployment:
+    desc: apply a deployment kubernetes
+    cmds:
+    - kubectl apply -f tests/deployment.yaml
+
+  init-db:
+    desc: initialize DataBase
+    cmds:
+    - python src/core/init_db.py
+
 default:
   desc: List available tasks
   cmds:
