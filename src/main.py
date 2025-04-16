@@ -143,7 +143,6 @@ if __name__ == "__main__":
         reload_dirs=["."]
     )
 
-    init_db()
     server = uvicorn.Server(uvicorn_config)
     server.run()
 
