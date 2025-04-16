@@ -1,9 +1,6 @@
 from fastapi import APIRouter
 from kubernetes import client, config
 from loguru import logger
-from starlette.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from typing import Any, Dict
 from utils.config import apps_v1, core_v1, protected_namespaces, shutdown_label_selector
 from core.kub_list import list_all_deployments, list_all_sts
@@ -28,6 +25,7 @@ class BulkActionResponse(BaseModel):
 
 workload = APIRouter(tags=["Workload Management"])
 
+health_route = APIRouter()
 
 @workload.get(
     "/manage-all/{mode}",
@@ -276,7 +274,7 @@ def delete_rs_zero():
         return {"status": "error", "message": str(e)}
 
 
-@workload.get(
+@health_route.get(
     "/live",
     response_model=WorkloadResponse,
     summary="Application liveness check",
@@ -287,7 +285,7 @@ def live():
     return {"status": "success", "message": "Application is live"}
 
 
-@workload.get(
+@health_route.get(
     "/health",
     summary="Kubernetes health check",
     description="Returns the status of all sts in all namespaces."

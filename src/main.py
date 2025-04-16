@@ -11,7 +11,7 @@ import sys
 import uvicorn
 import warnings
 from api.scheduler import scheduler
-from api.workload import workload
+from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
 from utils.config import apps_v1, core_v1, protected_namespaces
 from core.init_db import init_db
@@ -67,6 +67,7 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(router=scheduler)
 app.include_router(router=workload)
+app.include_router(router=health_route)
 
 logger.info("Starting the application...")
 
