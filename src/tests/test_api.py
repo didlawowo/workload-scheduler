@@ -6,26 +6,26 @@ from datetime import datetime
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from core.models import WorkloadSchedule
-from api.scheduler import router
+from api.scheduler import scheduler
 from fastapi import FastAPI
 
 app = FastAPI()
-app.include_router(router)
+app.include_router(scheduler)
 client = TestClient(app)
 
 @pytest.fixture(scope="function")
 def test_db():
     """Crée une base de données SQLite en mémoire pour les tests."""
     engine = create_engine(
-        "sqlite://", 
+        "sqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool
     )
     SQLModel.metadata.create_all(engine)
-    
+
     with Session(engine) as session:
         yield session
 
@@ -35,62 +35,62 @@ def monkeypatch_get_all_schedules(monkeypatch):
     def mock_get_all_schedules():
         return [
             WorkloadSchedule(
-                id=1, 
-                name="Test Schedule", 
-                start_time=datetime.now(), 
-                end_time=datetime.now(), 
-                status="scheduled", 
+                id=1,
+                name="Test Schedule",
+                start_time=datetime.now(),
+                end_time=datetime.now(),
+                status="scheduled",
                 active=True
             )
         ]
-    monkeypatch.setattr("api.routes.get_all_schedules", mock_get_all_schedules)
+    monkeypatch.setattr("api.scheduler.get_all_schedules", mock_get_all_schedules)
 
 @pytest.fixture
 def monkeypatch_add_schedule(monkeypatch):
     """Fixture pour monkeypatcher add_schedule"""
     def mock_add_schedule(schedule):
         return
-    monkeypatch.setattr("api.routes.add_schedule", mock_add_schedule)
+    monkeypatch.setattr("api.scheduler.add_schedule", mock_add_schedule)
 
 @pytest.fixture
 def monkeypatch_add_schedule_fail(monkeypatch):
     """Fixture pour monkeypatcher add_schedule avec échec"""
     def mock_add_schedule_fail(schedule):
         raise Exception("DB Error")
-    monkeypatch.setattr("api.routes.add_schedule", mock_add_schedule_fail)
+    monkeypatch.setattr("api.scheduler.add_schedule", mock_add_schedule_fail)
 
 @pytest.fixture
 def monkeypatch_delete_schedule_success(monkeypatch):
     """Fixture pour monkeypatcher delete_schedule avec succès"""
     def mock_delete_schedule(schedule_id):
         return True
-    monkeypatch.setattr("api.routes.delete_schedule", mock_delete_schedule)
+    monkeypatch.setattr("api.scheduler.delete_schedule", mock_delete_schedule)
 
 @pytest.fixture
 def monkeypatch_delete_schedule_fail(monkeypatch):
     """Fixture pour monkeypatcher delete_schedule avec échec"""
     def mock_delete_schedule(schedule_id):
         return False
-    monkeypatch.setattr("api.routes.delete_schedule", mock_delete_schedule)
+    monkeypatch.setattr("api.scheduler.delete_schedule", mock_delete_schedule)
 
 @pytest.fixture
 def monkeypatch_update_schedule_success(monkeypatch):
     """Fixture pour monkeypatcher update_schedule avec succès"""
     def mock_update_schedule(schedule_id, schedule):
         return True
-    monkeypatch.setattr("api.routes.update_schedule", mock_update_schedule)
+    monkeypatch.setattr("api.scheduler.update_schedule", mock_update_schedule)
 
 @pytest.fixture
 def monkeypatch_update_schedule_fail(monkeypatch):
     """Fixture pour monkeypatcher update_schedule avec échec"""
     def mock_update_schedule(schedule_id, schedule):
         return False
-    monkeypatch.setattr("api.routes.update_schedule", mock_update_schedule)
+    monkeypatch.setattr("api.scheduler.update_schedule", mock_update_schedule)
 
 def test_get_schedules(monkeypatch_get_all_schedules):
     """Test de récupération des planifications"""
     response = client.get("/schedules")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -164,9 +164,9 @@ def test_integration_workflow(test_db, monkeypatch):
         test_db.commit()
         return True
         
-    monkeypatch.setattr("api.routes.add_schedule", mock_add_schedule)
-    monkeypatch.setattr("api.routes.get_all_schedules", mock_get_all_schedules)
-    monkeypatch.setattr("api.routes.delete_schedule", mock_delete_schedule)
+    monkeypatch.setattr("api.scheduler.add_schedule", mock_add_schedule)
+    monkeypatch.setattr("api.scheduler.get_all_schedules", mock_get_all_schedules)
+    monkeypatch.setattr("api.scheduler.delete_schedule", mock_delete_schedule)
     
     schedule_data = {
         "name": "Integration Test Schedule",
