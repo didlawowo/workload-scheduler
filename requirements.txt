@@ -37,6 +37,8 @@ Werkzeug==3.0.6
 sqlalchemy==2.0.40
 sqlite-utils==3.38
 sqlmodel==0.0.24
+pytest==8.3.5
+python-crontab==3.2.0
 
 python-dotenv
 UnleashClient

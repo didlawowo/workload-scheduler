@@ -1,2 +1,5 @@
 .envrc
 .env
+**/__pycache__
+.coverage
+**/*.db

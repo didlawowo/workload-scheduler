@@ -21,8 +21,9 @@ tasks:
 
   run-dev:
     desc: Run the app localy
+    dir: src
     cmds:
-    - pipenv run python src/core/app.py
+    - pipenv run python main.py
 
   shell:
     desc: Open a shell in the running container
@@ -33,6 +34,26 @@ tasks:
     desc: template helm chart
     cmds:
     - helm template ./helm
+
+  apply-deployment:
+    desc: apply a deployment kubernetes
+    cmds:
+    - kubectl apply -f tests/deployment.yaml
+
+  init-db:
+    desc: initialize DataBase
+    cmds:
+    - python src/core/init_db.py
+
+  test-api:
+    desc: launch tests for api
+    cmds:
+    - coverage run -m pytest src/tests/test_api.py
+
+  test-apî-coverage:
+    desc: show your coverage
+    cmds:
+    - coverage report -m
 
 default:
   desc: List available tasks

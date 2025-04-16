@@ -1,0 +1,99 @@
+from fastapi import APIRouter, HTTPException, Path, Body
+from loguru import logger
+from pydantic import BaseModel
+from core.db import add_schedule, get_all_schedules, delete_schedule, update_schedule
+from core.models import WorkloadSchedule
+from icecream import ic
+from datetime import datetime
+from typing import List
+from crontab import CronSlices
+
+scheduler = APIRouter(tags=["Schedule Management"])
+
+class ScheduleResponse(BaseModel):
+    status: str
+    detail: str = None
+
+@scheduler.get(
+    "/schedules",
+    response_model=List[WorkloadSchedule],
+    summary="Get all workload schedules",
+    description="Retrieve all scheduled workload operations"
+)
+def get_schedules():
+    logger.info("GET /schedules")
+    return get_all_schedules()
+
+@scheduler.post(
+    "/schedules",
+    response_model=ScheduleResponse,
+    summary="Create a new schedule",
+    description="Schedule a new workload operation"
+)
+def create_schedule(
+    schedule: WorkloadSchedule = Body(..., description="The schedule details to create")
+):
+    try:
+        data = schedule.model_dump()
+
+        if isinstance(data["start_time"], str):
+            data["start_time"] = datetime.fromisoformat(data["start_time"])
+        if isinstance(data["end_time"], str):
+            data["end_time"] = datetime.fromisoformat(data["end_time"])
+
+        if data.get("cron"):
+            if not CronSlices.is_valid(data["cron"]):
+                raise ValueError("Invalid CRON expression")
+
+        new_schedule = WorkloadSchedule(**data)
+        add_schedule(new_schedule)
+
+        logger.success(f"POST /schedules - Created schedule with name: {new_schedule.name}")
+        return {"status": "created", "id": new_schedule.id}
+    except ValueError as ve:
+        ic(ve)
+        logger.error(f"Validation error: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        ic(e)
+        logger.error(f"Error creating schedule: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@scheduler.put(
+    "/schedules/{schedule_id}",
+    response_model=ScheduleResponse,
+    summary="Update an existing schedule",
+    description="Modify details of an existing schedule"
+)
+async def update_schedule_route(
+    schedule_id: int = Path(..., description="ID of the schedule to update"),
+    schedule: WorkloadSchedule = Body(..., description="The updated schedule details")
+):
+    try:
+        success = update_schedule(schedule_id, schedule)
+        if not success:
+            logger.error(f"PUT /schedules/{schedule_id} - Schedule not found")
+            raise HTTPException(status_code=404, detail="Schedule not found")
+        logger.success(f"PUT /schedules/{schedule_id} - Updated schedule with name: {schedule.name}")
+        return {"status": "updated"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        ic(e)
+        logger.error(f"Error updating schedule {schedule_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@scheduler.delete(
+    "/schedules/{schedule_id}",
+    response_model=ScheduleResponse,
+    summary="Delete a schedule",
+    description="Remove an existing schedule"
+)
+def delete_schedule_route(
+    schedule_id: int = Path(..., description="ID of the schedule to delete")
+):
+    logger.info(f"DELETE /schedules/{schedule_id}")
+    success = delete_schedule(schedule_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+    return {"status": "deleted"}
