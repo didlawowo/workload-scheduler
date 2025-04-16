@@ -45,6 +45,16 @@ tasks:
     cmds:
     - python src/core/init_db.py
 
+  test-api:
+    desc: launch tests for api
+    cmds:
+    - coverage run -m pytest src/tests/test_api.py
+
+  test-apî-coverage:
+    desc: show your coverage
+    cmds:
+    - coverage report -m
+
 default:
   desc: List available tasks
   cmds:
