@@ -17,7 +17,7 @@ def init_db():
         os.makedirs(db_dir, exist_ok=True)
     else:
         logger.info(f"Le dossier {db_dir} existe déjà")
-    
+
     # Création des tables
     logger.info("Initialisation de la base de données")
     SQLModel.metadata.create_all(engine)
