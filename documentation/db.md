@@ -69,7 +69,7 @@ Avant de commencer, assurez-vous d'avoir installé :
 1. **Démarrer le serveur**
 
    ```bash
-   python main.py
+   task run-dev
    ```
 
 2. **Accéder à la documentation API**
