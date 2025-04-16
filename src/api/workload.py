@@ -1,8 +1,9 @@
 from fastapi import APIRouter
-from kubernetes import client, config
+from kubernetes import client
 from loguru import logger
 from typing import Any, Dict
-from utils.config import apps_v1, core_v1, protected_namespaces, shutdown_label_selector
+from utils.config import protected_namespaces, shutdown_label_selector
+from utils.helpers import core_v1, apps_v1
 from core.kub_list import list_all_deployments, list_all_sts
 from pydantic import BaseModel
 
