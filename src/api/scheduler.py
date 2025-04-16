@@ -15,7 +15,7 @@ class ScheduleResponse(BaseModel):
     detail: str = None
 
 @scheduler.get(
-    "/schedules", 
+    "/schedules",
     response_model=List[WorkloadSchedule],
     summary="Get all workload schedules",
     description="Retrieve all scheduled workload operations"
@@ -35,19 +35,19 @@ def create_schedule(
 ):
     try:
         data = schedule.model_dump()
-        
+
         if isinstance(data["start_time"], str):
             data["start_time"] = datetime.fromisoformat(data["start_time"])
         if isinstance(data["end_time"], str):
             data["end_time"] = datetime.fromisoformat(data["end_time"])
-            
+
         if data.get("cron"):
             if not CronSlices.is_valid(data["cron"]):
                 raise ValueError("Invalid CRON expression")
-        
+
         new_schedule = WorkloadSchedule(**data)
         add_schedule(new_schedule)
-        
+
         logger.success(f"POST /schedules - Created schedule with name: {new_schedule.name}")
         return {"status": "created", "id": new_schedule.id}
     except ValueError as ve:
@@ -72,14 +72,16 @@ async def update_schedule_route(
     try:
         success = update_schedule(schedule_id, schedule)
         if not success:
+            logger.error(f"PUT /schedules/{schedule_id} - Schedule not found")
             raise HTTPException(status_code=404, detail="Schedule not found")
+        logger.success(f"PUT /schedules/{schedule_id} - Updated schedule with name: {schedule.name}")
         return {"status": "updated"}
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Error updating schedule: {e}")
+        ic(e)
+        logger.error(f"Error updating schedule {schedule_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-    
 
 @scheduler.delete(
     "/schedules/{schedule_id}",
