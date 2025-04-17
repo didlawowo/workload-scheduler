@@ -43,7 +43,7 @@ tasks:
   init-db:
     desc: initialize DataBase
     cmds:
-    - python src/core/init_db.py
+    - cd src && python -m core.init_db
 
 default:
   desc: List available tasks
