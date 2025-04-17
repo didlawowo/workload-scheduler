@@ -1,13 +1,12 @@
 from sqlmodel import SQLModel, create_engine
 from loguru import logger
 import os
+from core.models import WorkloadSchedule
 
-base_dir = "src"
-db_dir = os.path.join(base_dir, "data/sqlite")
+db_dir = os.path.join("data/sqlite")
 db_file = "scheduler.db"
 db_path = os.path.join(db_dir, db_file)
 sqlite_url = f"sqlite:///{db_path}"
-
 engine = create_engine(sqlite_url, echo=True)
 
 def init_db():
@@ -17,11 +16,16 @@ def init_db():
         os.makedirs(db_dir, exist_ok=True)
     else:
         logger.info(f"Le dossier {db_dir} existe déjà")
-    
+
+    logger.info(f"Chemin de la base de données: {db_path}")
+
     # Création des tables
     logger.info("Initialisation de la base de données")
-    SQLModel.metadata.create_all(engine)
-    logger.info("Base de données initialisée avec succès")
+    try:
+        SQLModel.metadata.create_all(engine)
+        logger.info(f"Base de données {WorkloadSchedule.__tablename__} initialisée avec succès")
+    except Exception as e:
+        logger.error(f"Erreur lors de l'initialisation de la base de données: {e}")
 
 if __name__ == "__main__":
     init_db()
