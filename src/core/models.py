@@ -11,9 +11,10 @@ class WorkloadSchedule(SQLModel, table=True):
     end_time: datetime
     status: str = "scheduled"
     active: bool = True
-    cron: Optional[str] = None
+    cron_start: Optional[str] = None
+    cron_stop: Optional[str] = None
     
-    @field_validator("cron")
+    @field_validator("cron_start", "cron_stop")
     @classmethod
     def validate_cron(cls, v):
         if v is not None and not CronSlices.is_valid(v):
