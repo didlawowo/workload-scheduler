@@ -6,9 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kubernetes Workloads Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon.ico">
-<link rel="stylesheet" href="/static/css/style.css">
+
 </head>
 
 <body>
@@ -196,7 +196,7 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleDetails(this)">Show Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details</button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -264,7 +264,7 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleDetails(this)">Show Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details</button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -299,7 +299,7 @@
             </table>
         </div>
 </body>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', path='js/main.js') }}"></script>
 
 </html>
 

@@ -61,10 +61,12 @@ logger.add(
 # Configuration du handler pour utiliser notre formateur
 logger = logger.patch(lambda record: record.update(message=formatter(record)))
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Configure FastAPI app
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_dir = os.path.join(BASE_DIR, "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 app.include_router(router=scheduler)
 app.include_router(router=workload)
 app.include_router(router=health_route)
@@ -94,8 +96,8 @@ if os.getenv("UNLEASH_API_URL"):
 version = "2.3.2"  #
 logger.info(f"Version: {version}")
 
-templates = Jinja2Templates(directory="templates")
-
+templates_dir = os.path.join(BASE_DIR, "templates")
+templates = Jinja2Templates(directory=templates_dir)
 
 class Workloads(BaseModel):
     workloads: List[str]
