@@ -48,7 +48,7 @@
                 <tbody>
                     {% for d in deploy %}
                     <tr>
-                        <td>{{ d.name }}</td>
+                        <td>{{ d.name }}{{ d.uid }}</td>
                         <td>{{ d.namespace }}</td>
 
                         <td>{{ d.replicas }}</td>
@@ -105,7 +105,7 @@
                                 </div>
                             </div>
                             {% endfor %}
-                        </td>
+                        </td>   
                         <td>
                             <button
                                 onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
@@ -115,7 +115,7 @@
                         </td>
                         <td>
                             <button onclick="edit_prog('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
-                                class="btn btn-danger">Programme</button>
+                                class="btn btn-primary">Modifier</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -136,8 +136,11 @@
                 <h3>Éditeur d'expression Cron</h3>
 
                 <div class="form-group">
-                    <label for="cronExpression">Expression Cron:</label>
-                    <input type="text" id="cronExpression" placeholder="Ex: */5 * * * *">
+                    <label for="cronExpressionStart">Cron start:</label>
+                    <input type="text" id="cronExpressionStart" placeholder="Ex: */5 * * * *">
+                    <div id="cronError" class="error">Expression Cron invalide</div>
+                    <label for="cronExpressionStop">Cron stop:</label>
+                    <input type="text" id="cronExpressionStop" placeholder="Ex: */5 * * * *">
                     <div id="cronError" class="error">Expression Cron invalide</div>
                     <div> decodage crontab js fonction cron guru </div>
                     <div> champs cron start</div>
@@ -153,6 +156,7 @@
                 <div id="modalInfo" class="form-group">
                     <p><strong>Action:</strong> <span id="actionType"></span></p>
                     <p><strong>Nom:</strong> <span id="resourceName"></span></p>
+                    <p><strong>Namespace:</strong> <span id="namespaceName"></span></p>
                     <p><strong>Direction:</strong> <span id="directionType"></span></p>
                 </div>
 
