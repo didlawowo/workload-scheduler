@@ -13,14 +13,14 @@ class WorkloadSchedule(SQLModel, table=True):
     active: bool = True
     cron_start: Optional[str] =  Field(default=None, nullable=True)
     cron_stop: Optional[str] = Field(default=None, nullable=True)
-    
-    @field_validator("cron_start", "cron_stop")
-    @classmethod
-    def validate_cron(cls, v):
-        if v is not None and not CronSlices.is_valid(v):
-            raise ValueError("Invalid CRON expression")
-        return v
-    
+
+    # @field_validator("cron_start", "cron_stop")
+    # @classmethod
+    # def validate_cron(cls, v):
+    #     if v is not None and not CronSlices.is_valid(v):
+    #         raise ValueError("Invalid CRON expression")
+    #     return v
+
     @classmethod
     def from_api_response(cls, schedule: dict): # TODO look at this
         """🏭 Crée une instance depuis la réponse API"""

@@ -2,7 +2,8 @@ const modal = document.getElementById('cronModal');
 const closeBtn = document.querySelector('.close');
 const cancelBtn = document.getElementById('cancelBtn');
 const saveBtn = document.getElementById('saveBtn');
-const cronInput = document.getElementById('cronExpression');
+const cronStart = document.getElementById('cronExpressionStart');
+const cronStop = document.getElementById('cronExpressionStop');
 const cronError = document.getElementById('cronError');
 
 const actionTypeEl = document.getElementById('actionType');
@@ -69,20 +70,8 @@ function isValidCron(expression) {
 }
 
 // Fonction pour éditer une programmation
-function edit_prog(action, name, namespace, direction) {
-    currentAction = action;
-    currentName = name;
-    currentNamespace = namespace;
-    currentDirection = direction;
-    
-    actionTypeEl.textContent = action;
-    resourceNameEl.textContent = name;
-    namespaceNameEl.textContent = namespace;
-    directionTypeEl.textContent = direction;
-    
-    const workloadName = `${action}-${name}-${direction}`;
-    
-    fetch('/schedules', {
+function edit_prog(uid) {
+    fetch('/schedules/uid', {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -90,22 +79,17 @@ function edit_prog(action, name, namespace, direction) {
     })
     .then(response => response.json())
     .then(schedules => {
-        const existingWorkload = schedules.find(schedule => 
-            schedule.name === workloadName || 
-            (schedule.name.includes(name) && 
-             schedule.name.includes(action) && 
-             schedule.name.includes(direction)));
-        
         if (existingWorkload) {
             currentScheduleId = existingWorkload.id;
             currentUid = existingWorkload.uid;
-            cronInput.value = existingWorkload.cron_start || defaultCronValue;
+            cronStart.value = existingWorkload.cron_start || defaultCronValue;
+            cronStop.value = existingWorkload.cron_stop || defaultCronValue;
             document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';
             saveBtn.dataset.mode = 'update';
         } else {
             currentScheduleId = null;
-            currentUid = generateUUID();
-            cronInput.value = defaultCronValue;
+            cronStart.value = defaultCronValue;
+            cronStop.value = defaultCronValue;
             document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
             saveBtn.dataset.mode = 'create';
         }
@@ -116,8 +100,8 @@ function edit_prog(action, name, namespace, direction) {
     .catch(error => {
         console.error('Erreur lors de la vérification des programmations:', error);
         currentScheduleId = null;
-        currentUid = generateUUID();
-        cronInput.value = defaultCronValue;
+        cronStart.value = defaultCronValue;
+        cronStop.value = defaultCronValue;
         document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
         saveBtn.dataset.mode = 'create';
         cronError.style.display = 'none';
@@ -144,22 +128,23 @@ document.addEventListener("DOMContentLoaded", function() {
 
 // Mettre à jour le gestionnaire d'événements pour le bouton "saveBtn"
 saveBtn.addEventListener('click', () => {
-    const expression = cronInput.value.trim();
-    if (!isValidCron(expression)) {
+    const cron_start_value = cronStart.value.trim();
+    const cron_stop_value = cronStop.value.trim();
+    if (!isValidCron(cron_start_value) || (!isValidCron(cron_stop_value))){
         cronError.style.display = 'block';
         return;
     }
-    
-    currentCronStartValue = expression;
-    currentCronStopValue = expression;
-    
+
+    currentCronStartValue = cron_start_value;
+    currentCronStopValue = cron_stop_value;
+
     const isUpdate = saveBtn.dataset.mode === 'update';
     const workloadName = `${currentAction}-${currentName}-${currentDirection}`;
 
     const now = new Date();
     const oneYearLater = new Date();
     oneYearLater.setFullYear(now.getFullYear() + 1);
-    
+
     if (isUpdate && currentScheduleId) {
         fetch(`/schedules/${currentScheduleId}`, {
             method: 'PUT',
@@ -213,24 +198,6 @@ saveBtn.addEventListener('click', () => {
     }
 });
 
-function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
-
-
-cronInput.addEventListener('input', () => {
-    const expression = cronInput.value.trim();
-    if (expression && !isValidCron(expression)) {
-        cronError.style.display = 'block';
-    } else {
-        cronError.style.display = 'none';
-    }
-});
-
-
 // Fonction pour récupérer les programmations depuis l'API
 function getListSchedule() {
     fetch('/schedules', {
@@ -245,92 +212,9 @@ function getListSchedule() {
         }
         return response.json();
     })
-    .then(data => {
-        console.log('Programmations récupérées:', data);
-        if (Array.isArray(data)) {
-            displayWorkloads(data);
-        } else {
-            console.error('Format de données inattendu:', data);
-        }
-    })
     .catch(error => {
         console.error('Erreur lors de la récupération des programmations:', error);
     });
-}
-
-// Mettre à jour la fonction displaySchedules pour montrer plus d'informations
-function displayWorkloads(schedules) {
-    const schedulesContainer = document.getElementById('schedulesContainer');
-    if (!schedulesContainer) {
-      console.error("L'élément 'schedulesContainer' n'existe pas dans le DOM");
-      return;
-    }
-    
-    schedulesContainer.innerHTML = '';
-    
-    if (schedules.length === 0) {
-      schedulesContainer.innerHTML = '<p>Aucune programmation trouvée</p>';
-      return;
-    }
-    
-    const table = document.createElement('table');
-    table.innerHTML = `
-      <thead>
-        <tr>
-          <th>Nom</th>
-          <th>Resource</th>
-          <th>Namespace</th>
-          <th>Action</th>
-          <th>Statut</th>
-          <th>Démarrage (Cron)</th>
-          <th>Arrêt (Cron)</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="schedulesTableBody">
-      </tbody>
-    `;
-    
-    const tableBody = table.querySelector('#schedulesTableBody');
-    
-    schedules.forEach(schedule => {
-      const row = document.createElement('tr');
-      
-      let resourceType = schedule.resource_type || '';
-      let resourceName = schedule.resource_name || '';
-      let resourceNamespace = schedule.resource_namespace || '';
-      let direction = schedule.direction || '';
-      
-      if (!resourceType || !resourceName || !direction) {
-        const nameParts = schedule.name.split('-');
-        if (nameParts.length >= 3) {
-          resourceType = resourceType || nameParts[0];
-          resourceName = resourceName || nameParts.slice(1, -1).join('-');
-          direction = direction || nameParts[nameParts.length - 1];
-        }
-      }
-      
-      const cronExpressionStart = schedule.cron_start ? schedule.cron_start : 'Non programmé';
-      const cronExpressionStop = schedule.cron_stop ? schedule.cron_stop : 'Non programmé';
-      
-      row.innerHTML = `
-        <td>${schedule.name}</td>
-        <td>${resourceName}</td>
-        <td>${resourceNamespace}</td>
-        <td>${direction}</td>
-        <td>${schedule.status}</td>
-        <td>${cronExpressionStart}</td>
-        <td>${cronExpressionStop}</td>
-        <td>
-          <button onclick="deleteSchedule(${schedule.id})" class="btn btn-danger">Supprimer</button>
-          <button onclick="editWorkload('${resourceType}', '${resourceName}', '${resourceNamespace}', '${direction}', ${schedule.id}, '${cronStartExpression}', '${cronStopExpression}')" class="btn btn-primary">Modifier</button>
-        </td>
-      `;
-      
-      tableBody.appendChild(row);
-    });
-    
-    schedulesContainer.appendChild(table);
 }
 
 // Fonction pour supprimer une programmation
@@ -356,19 +240,10 @@ function deleteSchedule(scheduleId) {
 }
 
 // Fonction pour éditer un workload existant depuis le tableau
-function editWorkload(action, name, namespace, direction, scheduleId, cronValue) {
-    currentAction = action;
-    currentName = name;
-    currentNamespace = namespace;
-    currentDirection = direction;
+function editWorkload(scheduleId, cronValue) {
     currentScheduleId = scheduleId;
 
-    actionTypeEl.textContent = action;
-    resourceNameEl.textContent = name;
-    namespaceNameEl.textContent = namespace;
-    directionTypeEl.textContent = direction;
-
-    cronInput.value = cronValue === 'Non programmé' ? defaultCronValue : cronValue;
+    cronStart.value = cronValue === 'Non programmé' ? defaultCronValue : cronValue;
     cronError.style.display = 'none';
 
     document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';

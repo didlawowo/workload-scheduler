@@ -109,6 +109,19 @@ class DatabaseManager: # TODO look at this and Learn IT
                 ic(e)
                 raise e
 
+    async def get_schedule(self, uid:str):
+        """📋 Récupère tous les horaires"""
+        async with self.async_session() as session:
+            try:
+                query = select(WorkloadSchedule).where(WorkloadSchedule.uid==uid)
+                results = await session.execute(query)
+                schedule = results.scalars().first()
+                return schedule
+            except Exception as e:
+                logger.error(f"Error fetching schedule: {e}")
+                ic(e)
+                raise e
+
     async def update_schedule(self, schedule_id: int, updated_schedule: WorkloadSchedule):
         async with self.async_session() as session:
             schedule = await session.get(WorkloadSchedule, schedule_id)

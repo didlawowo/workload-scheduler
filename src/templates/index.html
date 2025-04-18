@@ -114,20 +114,13 @@
                                 class="btn btn-success">Scale Up</button>
                         </td>
                         <td>
-                            <button onclick="edit_prog('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                            <button onclick="edit_prog('d.uid')"
                                 class="btn btn-primary">Modifier</button>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-
-        <div class="section" id="schedules">
-            <h2>Programmations</h2>
-            <div id="schedulesContainer">
-                <p>Chargement des programmations...</p>
-            </div>
         </div>
 
         <div id="cronModal" class="modal">
@@ -142,9 +135,7 @@
                     <label for="cronExpressionStop">Cron stop:</label>
                     <input type="text" id="cronExpressionStop" placeholder="Ex: */5 * * * *">
                     <div id="cronError" class="error">Expression Cron invalide</div>
-                    <div> decodage crontab js fonction cron guru </div>
-                    <div> champs cron start</div>
-                    <div> champs cron end</div>
+                    <!-- TODO <div> decodage crontab js fonction cron guru </div>  -->
 
                     <!-- <div class="cron-helper">
                         <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>
@@ -152,14 +143,6 @@
                         <p><strong>Exemple:</strong> "0 9 * * 1-5" = tous les jours ouvrables à 9h00</p>
                     </div> -->
                 </div>
-
-                <div id="modalInfo" class="form-group">
-                    <p><strong>Action:</strong> <span id="actionType"></span></p>
-                    <p><strong>Nom:</strong> <span id="resourceName"></span></p>
-                    <p><strong>Namespace:</strong> <span id="namespaceName"></span></p>
-                    <p><strong>Direction:</strong> <span id="directionType"></span></p>
-                </div>
-
                 <div class="actions">
                     <button id="cancelBtn" class="btn cancel-btn">Annuler</button>
                     <button id="saveBtn" class="btn save-btn">Enregistrer</button>

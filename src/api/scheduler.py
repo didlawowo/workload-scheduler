@@ -30,6 +30,24 @@ async def get_schedules(): # TODO: change to async
         ic(e)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+@scheduler.get(
+    "/schedule/uid",
+    response_model=List[WorkloadSchedule],
+    summary="Get workload by uid",
+    description="Retrieve one scheduled workload operations"
+)
+async def get_schedule(
+    uid:str
+):
+    try:
+        schedule = await db_manager.get_schedule(uid=uid)
+        return schedule
+    except Exception as e:
+        logger.error(f"Error in GET /schedule/uid: {e}")
+        ic(e)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
 @scheduler.post(
     "/schedules",
     response_model=ScheduleResponse,
