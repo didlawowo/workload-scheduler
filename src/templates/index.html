@@ -25,12 +25,12 @@
             <div id="progressBar" class="progress-bar"></div>
         </div>
 
-        <div class="actions">
+        <div class="actions" id="globalActions">
             <button onclick="manageWorkloadStatus('','','','down-all')" class="btn btn-danger">Shutdown All</button>
             <button onclick="manageWorkloadStatus('','','','up-all')" class="btn btn-success">Scale Up All</button>
         </div>
 
-        <div class="section">
+        <div class="section" id="deployment">
             <h2>Deployments</h2>
             <p>There are {{ deploy|length }} deployments in the cluster.</p>
             <table>
@@ -77,7 +77,8 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show
+                                        Details</button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -106,7 +107,8 @@
                             {% endfor %}
                         </td>
                         <td>
-                            <button onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                            <button
+                                onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
                                 class="btn btn-danger">Shutdown</button>
                             <button onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
                                 class="btn btn-success">Scale Up</button>
@@ -121,7 +123,7 @@
             </table>
         </div>
 
-        <div class="section">
+        <div class="section" id="schedules">
             <h2>Programmations</h2>
             <div id="schedulesContainer">
                 <p>Chargement des programmations...</p>
@@ -132,26 +134,28 @@
             <div class="modal-content">
                 <span class="close">&times;</span>
                 <h3>Éditeur d'expression Cron</h3>
-                
+
                 <div class="form-group">
                     <label for="cronExpression">Expression Cron:</label>
                     <input type="text" id="cronExpression" placeholder="Ex: */5 * * * *">
                     <div id="cronError" class="error">Expression Cron invalide</div>
-                    
-                    <div class="cron-helper">
+                    <div> decodage crontab js fonction cron guru </div>
+                    <div> champs cron start</div>
+                    <div> champs cron end</div>
+
+                    <!-- <div class="cron-helper">
                         <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>
                         <p><strong>Exemple:</strong> "*/5 * * * *" = toutes les 5 minutes</p>
                         <p><strong>Exemple:</strong> "0 9 * * 1-5" = tous les jours ouvrables à 9h00</p>
-                    </div>
+                    </div> -->
                 </div>
-                
+
                 <div id="modalInfo" class="form-group">
                     <p><strong>Action:</strong> <span id="actionType"></span></p>
                     <p><strong>Nom:</strong> <span id="resourceName"></span></p>
-                    <p><strong>Namespace:</strong> <span id="namespaceName"></span></p>
                     <p><strong>Direction:</strong> <span id="directionType"></span></p>
                 </div>
-                
+
                 <div class="actions">
                     <button id="cancelBtn" class="btn cancel-btn">Annuler</button>
                     <button id="saveBtn" class="btn save-btn">Enregistrer</button>
@@ -159,7 +163,7 @@
             </div>
         </div>
 
-        <div class="section">
+        <div class="section" id="statefulsets">
             <h2>Statefulsets</h2>
             <p>There are {{ sts|length }} statefulsets in the cluster.</p>
             <table>
@@ -196,7 +200,8 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show
+                                        Details</button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -236,7 +241,7 @@
             </table>
         </div>
 
-        <div class="section">
+        <div class="section" id="daemonsets">
             <h2>DaemonSets</h2>
             <p>There are {{ ds|length }} DaemonSets in the cluster.</p>
             <table>
@@ -264,7 +269,8 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show
+                                        Details</button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -300,7 +306,5 @@
         </div>
 </body>
 <script src="{{ url_for('static', path='js/main.js') }}"></script>
-
-</html>
 
 </html>
