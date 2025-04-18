@@ -26,8 +26,8 @@
         </div>
 
         <div class="actions">
-            <button onclick="scale('','','','down-all')" class="btn btn-danger">Shutdown All</button>
-            <button onclick="scale('','','','up-all')" class="btn btn-success">Scale Up All</button>
+            <button onclick="manageWorkloadStatus('','','','down-all')" class="btn btn-danger">Shutdown All</button>
+            <button onclick="manageWorkloadStatus('','','','up-all')" class="btn btn-success">Scale Up All</button>
         </div>
 
         <div class="section">
@@ -77,7 +77,7 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleDetails(this)">Show Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details</button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -106,9 +106,9 @@
                             {% endfor %}
                         </td>
                         <td>
-                            <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                            <button onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
                                 class="btn btn-danger">Shutdown</button>
-                            <button onclick="scale('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
+                            <button onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
                                 class="btn btn-success">Scale Up</button>
                         </td>
                         <td>
@@ -225,9 +225,9 @@
                             {% endfor %}
                         </td>
                         <td>
-                            <button onclick="scale('sts', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                            <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.namespace }}', 'down')"
                                 class="btn btn-danger">Shutdown</button>
-                            <button onclick="scale('sts', '{{ d.name }}', '{{ d.namespace }}', 'up')"
+                            <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.namespace }}', 'up')"
                                 class="btn btn-success">Scale Up</button>
                         </td>
                     </tr>
