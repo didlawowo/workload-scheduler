@@ -1,3 +1,4 @@
+from datetime import datetime
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -58,22 +59,22 @@ class DatabaseManager: # TODO look at this and Learn IT
                     select(WorkloadSchedule).where(WorkloadSchedule.uid == uid)
                 )
                 existing_workload = existing_workload.scalars().first()
-                
+
                 # Si l'uid existe déjà, on ne fait rien et on retourne
                 if existing_workload:
                     logger.info(f"🔄 uid {uid} pour {name} existe déjà, aucune action nécessaire")
                     return
-                
+
                 # Sinon, on crée un nouveau workload
                 workload = WorkloadSchedule(
                     name=name,
                     uid=uid,
                 )
-                
+
                 session.add(workload)
                 await session.commit()
                 logger.success(f"✅ uid stocké pour {name}")
-                
+
             except Exception as e:
                 await session.rollback()
                 logger.error(f"❌ Erreur lors du stockage: {e}")
@@ -86,7 +87,7 @@ class DatabaseManager: # TODO look at this and Learn IT
             try:
                 ic(schedule)
                 schedule = WorkloadSchedule.from_api_response(schedule)
-            
+
                 session.add(schedule)
                 await session.commit()
                 logger.success(f"✅ Statut stocké pour l'appareil {schedule.uid}")
@@ -108,32 +109,46 @@ class DatabaseManager: # TODO look at this and Learn IT
                 ic(e)
                 raise e
 
-    async def update_schedule(
-        self, schedule_id: int, updated_schedule: WorkloadSchedule
-    ):
+    async def update_schedule(self, schedule_id: int, updated_schedule: WorkloadSchedule):
         async with self.async_session() as session:
-            schedule = session.get(WorkloadSchedule, schedule_id)
+            schedule = await session.get(WorkloadSchedule, schedule_id)
             if not schedule:
                 logger.error(f"Schedule with ID {schedule_id} not found")
                 return False
 
             schedule_data = updated_schedule.model_dump(exclude={"id"})
 
+            if "last_update" in schedule_data and isinstance(schedule_data["last_update"], str):
+                schedule_data["last_update"] = datetime.fromisoformat(schedule_data["last_update"])
+
             for key, value in schedule_data.items():
                 setattr(schedule, key, value)
 
-            if schedule.cron and not CronSlices.is_valid(schedule.cron):
-                raise ValueError("Invalid CRON expression")
+            if hasattr(schedule, 'cron_start') and schedule.cron_start:
+                if not CronSlices.is_valid(schedule.cron_start):
+                    raise ValueError("Invalid CRON expression in cron_start")
+
+            if hasattr(schedule, 'cron_stop') and schedule.cron_stop:
+                if not CronSlices.is_valid(schedule.cron_stop):
+                    raise ValueError("Invalid CRON expression in cron_stop")
+
+            if hasattr(schedule, 'cron') and schedule.cron:
+                if not CronSlices.is_valid(schedule.cron):
+                    raise ValueError("Invalid CRON expression in cron")
 
             session.add(schedule)
-            session.commit()
+            await session.commit()
             return True
 
     async def delete_schedule(self, schedule_id: int):
         async with self.async_session() as session:
-            schedule = session.get(WorkloadSchedule, schedule_id)
+            schedule = await session.get(WorkloadSchedule, schedule_id)
             if not schedule:
+                logger.error(f"Schedule with ID {schedule_id} not found")
                 return False
-            session.delete(schedule)
-            session.commit()
+            logger.info(f"Deleting schedule: {schedule.id}, {schedule.name}")
+
+            await session.delete(schedule)
+            await session.commit()
+            logger.info(f"Schedule {schedule_id} deleted successfully")
             return True
