@@ -20,7 +20,7 @@ class ScheduleResponse(BaseModel):
     summary="Get all workload schedules",
     description="Retrieve all scheduled workload operations"
 )
-def get_schedules():
+def get_schedules(): # TODO: change to async
     try:
         logger.info("GET /schedules")
         return get_all_schedules()

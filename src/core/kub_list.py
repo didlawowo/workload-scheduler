@@ -1,6 +1,6 @@
 from kubernetes import client
 from loguru import logger
-
+from icecream import ic
 
 def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
     """
@@ -94,6 +94,7 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
                 {
                     "namespace": ds.metadata.namespace,
                     "name": ds.metadata.name,
+                    "uid": ds.metadata.uid,
                     "labels": ds.metadata.labels,
                     "status": status,
                     "pods": pod_info,
@@ -121,7 +122,7 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
 
         for d in deployment.items:
             # Skip if not matching our criteria
-
+            # ic(d.metadata)
             if (
                 d.metadata.name == "workload-scheduler"
                 # or d.metadata.labels is None
@@ -181,11 +182,13 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
                                 if resources and resources.limits
                                 else {}
                             )
-
+                            # ic(po)
                             pod_info.append(
                                 {
+                                    
                                     "name": pod.metadata.name,
                                     "node": pod.spec.node_name,
+                                    "uid": pod.metadata.uid,
                                     "status": pod.status.phase,
                                     "has_pvc": False,
                                     "resource_requests": requests,
@@ -200,6 +203,7 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
                 {
                     "namespace": d.metadata.namespace,
                     "name": d.metadata.name,
+                    "uid": d.metadata.uid,
                     "replicas": d.status.replicas,
                     "available_replicas": d.status.available_replicas,
                     "ready_replicas": d.status.ready_replicas,
@@ -280,6 +284,7 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces):
                     {
                         "namespace": s.metadata.namespace,
                         "name": s.metadata.name,
+                        "uid": s.metadata.uid,
                         "replicas": s.status.replicas,
                         "available_replicas": s.status.available_replicas,
                         "ready_replicas": s.status.ready_replicas,

@@ -1,10 +1,13 @@
 from loguru import logger
 from sqlmodel import Session, select
 from .models import WorkloadSchedule
-from .init_db import engine
+# from .init_db import engine
 from icecream import ic
 from crontab import CronSlices
+from core.dbManager import DatabaseManager
+D = DatabaseManager()
 
+engine = D.engine # todo delete it
 def add_schedule(schedule: WorkloadSchedule):
     with Session(engine) as session:
         session.add(schedule)

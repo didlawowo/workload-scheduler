@@ -1,3 +1,5 @@
+import asyncio
+import platform
 from fastapi import FastAPI, Request
 from loguru import logger
 import os
@@ -5,6 +7,7 @@ from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import json
+from icecream import ic
 from pydantic import BaseModel
 from typing import List
 import sys
@@ -15,7 +18,7 @@ from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
 from utils.config import protected_namespaces
 from utils.helpers import apps_v1, core_v1
-
+from core.dbManager import DatabaseManager
 
 os.environ["TZ"] = "Europe/Paris"
 log_level = os.getenv("LOG_LEVEL", "INFO")
@@ -136,17 +139,50 @@ def status(request: Request):
 
 
 # Run the application
-if __name__ == "__main__":
-    # Configurer Uvicorn avec notre système de logging
-    uvicorn_config = uvicorn.Config(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        reload=is_dev,
-        reload_dirs=["."]
-    )
+async def main():
+    logger.info("Starting Workload Scheduler...")
+    db =  DatabaseManager()
+    await db.create_table() # TODO move this to a better place
+    logger.success("Database created and tables initialized.")
+    deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
+    sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
+    # ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
 
-    server = uvicorn.Server(uvicorn_config)
-    server.run()
+    logger.success(
+        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}  ")
 
-    logger.success("Started Workload Scheduler...")
+    for dep in deployment_list: # TODO move this to a better place
+        # ic( dep.get("uid"))
+        await db.store_uid(dep.get("uid"), dep.get('name'))
+    for sts in sts_list:
+        await db.store_uid(sts.get("uid"), sts.get('name'))
+    # for ds in ds_list:
+        # db.store_uid(ds.uid, ds.name)
+    logger.success("UIDs stored in database.")
+
+
+
+if __name__ == "__main__":     
+    if platform.system() == "Darwin":
+        ic.enable()
+    else:
+        ic.disable()
+    logger.info("🚀 Démarrage du script")
+    try:         
+        asyncio.run(main())     
+        logger.info("Starting Workload Scheduler...")
+
+        uvicorn_config = uvicorn.Config(
+            app,
+            host="0.0.0.0",
+            port=8000,
+            reload=is_dev,
+            reload_dirs=["."]
+        )
+
+        server = uvicorn.Server(uvicorn_config)
+        server.run()
+
+        logger.success("Started Workload Scheduler...")
+    except KeyboardInterrupt:         
+        logger.info("👋 Arrêt demandé par l'utilisateur")
