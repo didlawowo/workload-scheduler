@@ -37,6 +37,8 @@ Werkzeug==3.0.6
 sqlalchemy==2.0.40
 sqlite-utils==3.38
 sqlmodel==0.0.24
+aiosqlite==0.21.0
+greenlet==3.2.0
 
 python-dotenv
 UnleashClient
