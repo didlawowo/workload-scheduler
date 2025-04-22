@@ -114,7 +114,7 @@
                                 class="btn btn-success">Scale Up</button>
                         </td>
                         <td>
-                            <button onclick="edit_prog('d.uid')"
+                            <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')"
                                 class="btn btn-primary">Modifier</button>
                         </td>
                     </tr>
@@ -132,16 +132,12 @@
                     <label for="cronExpressionStart">Cron start:</label>
                     <input type="text" id="cronExpressionStart" placeholder="Ex: */5 * * * *">
                     <div id="cronError" class="error">Expression Cron invalide</div>
+
                     <label for="cronExpressionStop">Cron stop:</label>
                     <input type="text" id="cronExpressionStop" placeholder="Ex: */5 * * * *">
                     <div id="cronError" class="error">Expression Cron invalide</div>
-                    <!-- TODO <div> decodage crontab js fonction cron guru </div>  -->
 
-                    <!-- <div class="cron-helper">
-                        <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>
-                        <p><strong>Exemple:</strong> "*/5 * * * *" = toutes les 5 minutes</p>
-                        <p><strong>Exemple:</strong> "0 9 * * 1-5" = tous les jours ouvrables à 9h00</p>
-                    </div> -->
+                    <div id="cronInfo" class="cron-helper"> </div>
                 </div>
                 <div class="actions">
                     <button id="cancelBtn" class="btn cancel-btn">Annuler</button>
