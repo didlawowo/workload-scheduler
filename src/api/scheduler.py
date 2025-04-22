@@ -1,11 +1,14 @@
-from fastapi import APIRouter, HTTPException, Path, Body
+from fastapi import APIRouter, HTTPException, Path, Body, Response
 from loguru import logger
 from pydantic import BaseModel
 from core.dbManager import DatabaseManager
 from core.models import WorkloadSchedule
+from utils.clean_cron import clean_cron_expression
 from icecream import ic
 from typing import List
 from crontab import CronSlices
+from typing import Optional
+from datetime import datetime
 
 scheduler = APIRouter(tags=["Schedule Management"])
 db_manager = DatabaseManager()
@@ -20,7 +23,7 @@ class ScheduleResponse(BaseModel):
     summary="Get all workload schedules",
     description="Retrieve all scheduled workload operations"
 )
-async def get_schedules(): # TODO: change to async
+async def get_schedules():
     try:
         logger.info("GET /schedules")
         schedules = await db_manager.get_all_schedules()
@@ -31,21 +34,26 @@ async def get_schedules(): # TODO: change to async
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @scheduler.get(
-    "/schedule/uid",
-    response_model=List[WorkloadSchedule],
+    "/schedule/{uid}",
+    response_model=Optional[WorkloadSchedule],
     summary="Get workload by uid",
     description="Retrieve one scheduled workload operations"
 )
-async def get_schedule(
-    uid:str
-):
+async def get_schedule_by_uid(uid: str):
+    """Récupère une programmation par son UID"""
     try:
-        schedule = await db_manager.get_schedule(uid=uid)
+        logger.info(f"GET /schedule/{uid}")
+        schedule = await db_manager.get_schedule(uid)
+
+        if not schedule:
+            logger.info(f"Aucun schedule trouvé pour l'UID: {uid}")
+            return Response(status_code=404)
+
+        logger.info(f"Schedule trouvé pour l'UID: {uid}, ID: {schedule.id}")
         return schedule
     except Exception as e:
-        logger.error(f"Error in GET /schedule/uid: {e}")
-        ic(e)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        logger.error(f"Erreur lors de la récupération de la programmation {uid}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @scheduler.post(
@@ -60,13 +68,21 @@ async def create_schedule(
     try:
         data = schedule.model_dump()
 
+        if isinstance(data.get("last_update"), str):
+            try:
+                data["last_update"] = datetime.fromisoformat(data["last_update"].replace("Z", "+00:00"))
+            except ValueError:
+                data["last_update"] = datetime.utcnow()
+
         if data.get("cron_start"):
+            data["cron_start"] = clean_cron_expression(data["cron_start"])
             if not CronSlices.is_valid(data["cron_start"]):
-                raise ValueError("Invalid CRON expression in cron_start")
+                raise ValueError(f"Invalid CRON expression in cron_start: {data['cron_start']}")
 
         if data.get("cron_stop"):
+            data["cron_stop"] = clean_cron_expression(data["cron_stop"])
             if not CronSlices.is_valid(data["cron_stop"]):
-                raise ValueError("Invalid CRON expression in cron_stop")
+                raise ValueError(f"Invalid CRON expression in cron_stop: {data['cron_stop']}")
 
         await db_manager.store_schedule_status(data)
         logger.success("POST /schedules - Created schedule")
@@ -92,6 +108,22 @@ async def update_schedule_route(
     try:
         data = schedule.model_dump()
 
+        if isinstance(data.get("last_update"), str):
+            try:
+                data["last_update"] = datetime.fromisoformat(data["last_update"].replace("Z", "+00:00"))
+            except ValueError:
+                data["last_update"] = datetime.utcnow()
+                
+        if data.get("cron_start"):
+            data["cron_start"] = clean_cron_expression(data["cron_start"])
+            if not CronSlices.is_valid(data["cron_start"]):
+                raise ValueError(f"Invalid CRON expression in cron_start: {data['cron_start']}")
+
+        if data.get("cron_stop"):
+            data["cron_stop"] = clean_cron_expression(data["cron_stop"])
+            if not CronSlices.is_valid(data["cron_stop"]):
+                raise ValueError(f"Invalid CRON expression in cron_stop: {data['cron_stop']}")
+
         updated_schedule = WorkloadSchedule(**data)
 
         success = await db_manager.update_schedule(schedule_id, updated_schedule)
@@ -106,7 +138,6 @@ async def update_schedule_route(
     except Exception as e:
         logger.error(f"Error updating schedule: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
 
 @scheduler.delete(
     "/schedules/{schedule_id}",

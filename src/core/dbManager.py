@@ -3,18 +3,17 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlmodel import select, text
-
-
 from .models import WorkloadSchedule
-
+from utils.clean_cron import clean_cron_expression
 from icecream import ic
 from crontab import CronSlices
+from typing import Dict, Any
 
 Base = declarative_base()
 DATABASE_URL = "sqlite+aiosqlite:///data/schedule.db"
 
 
-class DatabaseManager: # TODO look at this and Learn IT
+class DatabaseManager:
     def __init__(self):
         """🗄️ Initialise la connexion à la base de données"""
         self.engine = create_async_engine(DATABASE_URL, echo=False)
@@ -80,17 +79,29 @@ class DatabaseManager: # TODO look at this and Learn IT
                 logger.error(f"❌ Erreur lors du stockage: {e}")
                 raise
 
-    async def store_schedule_status(self, schedule: dict):
+    async def store_schedule_status(self, schedule: Dict[str, Any]):
         """💾 Stocke le statut d'un appareil"""
 
         async with self.async_session() as session:
             try:
                 ic(schedule)
-                schedule = WorkloadSchedule.from_api_response(schedule)
+                if isinstance(schedule.get("last_update"), str):
+                    try:
+                        schedule["last_update"] = datetime.fromisoformat(schedule["last_update"].replace("Z", "+00:00"))
+                    except ValueError:
+                        schedule["last_update"] = datetime.utcnow()
 
-                session.add(schedule)
+                if schedule.get("cron_start"):
+                    schedule["cron_start"] = clean_cron_expression(schedule["cron_start"])
+                if schedule.get("cron_stop"):
+                    schedule["cron_stop"] = clean_cron_expression(schedule["cron_stop"])
+
+                schedule_obj = WorkloadSchedule.from_api_response(schedule)
+
+                session.add(schedule_obj)
                 await session.commit()
-                logger.success(f"✅ Statut stocké pour l'appareil {schedule.uid}")
+                logger.success(f"✅ Statut stocké pour l'appareil {schedule_obj.uid}")
+                return schedule_obj
             except Exception as e:
                 await session.rollback()
                 logger.error(f"❌ Erreur lors du stockage: {e}")
@@ -109,17 +120,24 @@ class DatabaseManager: # TODO look at this and Learn IT
                 ic(e)
                 raise e
 
-    async def get_schedule(self, uid:str):
-        """📋 Récupère tous les horaires"""
+    async def get_schedule(self, uid: str):
+        """📋 Récupère l'horaire de l'uid"""
         async with self.async_session() as session:
             try:
-                query = select(WorkloadSchedule).where(WorkloadSchedule.uid==uid)
+                logger.info(f"Recherche du schedule pour l'UID: {uid}")
+                query = select(WorkloadSchedule).where(WorkloadSchedule.uid == uid)
                 results = await session.execute(query)
                 schedule = results.scalars().first()
+
+                if schedule:
+                    logger.info(f"Schedule trouvé pour l'UID {uid}: ID={schedule.id}")
+                else:
+                    logger.info(f"Aucun schedule trouvé pour l'UID: {uid}")
+
                 return schedule
             except Exception as e:
-                logger.error(f"Error fetching schedule: {e}")
-                ic(e)
+                logger.error(f"Erreur lors de la récupération du schedule pour l'UID {uid}: {e}")
+                logger.exception(e)
                 raise e
 
     async def update_schedule(self, schedule_id: int, updated_schedule: WorkloadSchedule):
@@ -131,23 +149,29 @@ class DatabaseManager: # TODO look at this and Learn IT
 
             schedule_data = updated_schedule.model_dump(exclude={"id"})
 
-            if "last_update" in schedule_data and isinstance(schedule_data["last_update"], str):
-                schedule_data["last_update"] = datetime.fromisoformat(schedule_data["last_update"])
+            if "last_update" in schedule_data:
+                if isinstance(schedule_data["last_update"], str):
+                    try:
+                        schedule_data["last_update"] = datetime.fromisoformat(schedule_data["last_update"].replace("Z", "+00:00"))
+                    except ValueError:
+                        schedule_data["last_update"] = datetime.utcnow()
+
+            if "cron_start" in schedule_data and schedule_data["cron_start"]:
+                schedule_data["cron_start"] = clean_cron_expression(schedule_data["cron_start"])
+
+            if "cron_stop" in schedule_data and schedule_data["cron_stop"]:
+                schedule_data["cron_stop"] = clean_cron_expression(schedule_data["cron_stop"])
 
             for key, value in schedule_data.items():
                 setattr(schedule, key, value)
 
             if hasattr(schedule, 'cron_start') and schedule.cron_start:
                 if not CronSlices.is_valid(schedule.cron_start):
-                    raise ValueError("Invalid CRON expression in cron_start")
+                    raise ValueError(f"Invalid CRON expression in cron_start: {schedule.cron_start}")
 
             if hasattr(schedule, 'cron_stop') and schedule.cron_stop:
                 if not CronSlices.is_valid(schedule.cron_stop):
-                    raise ValueError("Invalid CRON expression in cron_stop")
-
-            if hasattr(schedule, 'cron') and schedule.cron:
-                if not CronSlices.is_valid(schedule.cron):
-                    raise ValueError("Invalid CRON expression in cron")
+                    raise ValueError(f"Invalid CRON expression in cron_stop: {schedule.cron_stop}")
 
             session.add(schedule)
             await session.commit()
