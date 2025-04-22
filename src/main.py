@@ -74,6 +74,9 @@ app.include_router(router=scheduler)
 app.include_router(router=workload)
 app.include_router(router=health_route)
 
+# Création d'une instance de DatabaseManager
+db = DatabaseManager()
+
 logger.info("Starting the application...")
 
 
@@ -111,6 +114,34 @@ class Workloads(BaseModel):
 # Déterminer l'environnement (développement ou production)
 is_dev = os.environ.get("APP_ENV", "development").lower() == "development"
 
+async def init_database():
+    """Initialise la base de données et stocke les UIDs des workloads"""
+    logger.info("Initializing database...")
+
+    await db.create_table()
+    logger.success("Database created and tables initialized.")
+
+    deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
+    sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
+    ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
+
+    logger.success(
+        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)}"
+    )
+
+    for dep in deployment_list:
+        await db.store_uid(dep.get("uid"), dep.get('name'))
+    for sts in sts_list:
+        await db.store_uid(sts.get("uid"), sts.get('name'))
+    for ds in ds_list:
+        await db.store_uid(ds.get("uid"), ds.get('name'))
+    logger.success("UIDs stored in database.")
+
+@app.on_event("startup")
+async def startup_event():
+    """Événement exécuté au démarrage de l'application"""
+    await init_database()
+
 @app.get("/", response_class=HTMLResponse)
 def status(request: Request):
     """
@@ -141,35 +172,16 @@ def status(request: Request):
 # Run the application
 async def main():
     logger.info("Starting Workload Scheduler...")
-    db =  DatabaseManager()
-    await db.create_table() # TODO move this to a better place
-    logger.success("Database created and tables initialized.")
-    deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
-    sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
-    # ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
+    logger.info("🚀 Application ready.")
 
-    logger.success(
-        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}  ")
-
-    for dep in deployment_list: # TODO move this to a better place
-        # ic( dep.get("uid"))
-        await db.store_uid(dep.get("uid"), dep.get('name'))
-    for sts in sts_list:
-        await db.store_uid(sts.get("uid"), sts.get('name'))
-    # for ds in ds_list:
-        # db.store_uid(ds.uid, ds.name)
-    logger.success("UIDs stored in database.")
-
-
-
-if __name__ == "__main__":     
+if __name__ == "__main__":
     if platform.system() == "Darwin":
         ic.enable()
     else:
         ic.disable()
     logger.info("🚀 Démarrage du script")
-    try:         
-        asyncio.run(main())     
+    try:
+        asyncio.run(main())
         logger.info("Starting Workload Scheduler...")
 
         uvicorn_config = uvicorn.Config(
