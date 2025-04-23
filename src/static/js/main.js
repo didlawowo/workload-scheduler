@@ -257,7 +257,9 @@ saveBtn.addEventListener('click', () => {
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json().then(errorData => {
+                    throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                });
             }
             return response.json();
         })
