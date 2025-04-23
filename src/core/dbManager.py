@@ -6,7 +6,7 @@ from sqlmodel import select, text
 from .models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
 from icecream import ic
-from crontab import CronSlices
+from cron_validator import CronValidator
 from typing import Dict, Any
 
 Base = declarative_base()
@@ -166,11 +166,11 @@ class DatabaseManager:
                 setattr(schedule, key, value)
 
             if hasattr(schedule, 'cron_start') and schedule.cron_start:
-                if not CronSlices.is_valid(schedule.cron_start):
+                if not CronValidator.parse(schedule.cron_start):
                     raise ValueError(f"Invalid CRON expression in cron_start: {schedule.cron_start}")
 
             if hasattr(schedule, 'cron_stop') and schedule.cron_stop:
-                if not CronSlices.is_valid(schedule.cron_stop):
+                if not CronValidator.parse(schedule.cron_stop):
                     raise ValueError(f"Invalid CRON expression in cron_stop: {schedule.cron_stop}")
 
             session.add(schedule)

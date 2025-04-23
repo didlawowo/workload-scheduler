@@ -6,7 +6,7 @@ from core.models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
 from icecream import ic
 from typing import List
-from crontab import CronSlices
+from cron_validator import CronValidator
 from typing import Optional
 from datetime import datetime
 
@@ -76,12 +76,12 @@ async def create_schedule(
 
         if data.get("cron_start"):
             data["cron_start"] = clean_cron_expression(data["cron_start"])
-            if not CronSlices.is_valid(data["cron_start"]):
+            if not CronValidator.parse(data["cron_start"]):
                 raise ValueError(f"Invalid CRON expression in cron_start: {data['cron_start']}")
 
         if data.get("cron_stop"):
             data["cron_stop"] = clean_cron_expression(data["cron_stop"])
-            if not CronSlices.is_valid(data["cron_stop"]):
+            if not CronValidator.parse(data["cron_stop"]):
                 raise ValueError(f"Invalid CRON expression in cron_stop: {data['cron_stop']}")
 
         await db_manager.store_schedule_status(data)
@@ -116,12 +116,12 @@ async def update_schedule_route(
                 
         if data.get("cron_start"):
             data["cron_start"] = clean_cron_expression(data["cron_start"])
-            if not CronSlices.is_valid(data["cron_start"]):
+            if not CronValidator.parse(data["cron_start"]):
                 raise ValueError(f"Invalid CRON expression in cron_start: {data['cron_start']}")
 
         if data.get("cron_stop"):
             data["cron_stop"] = clean_cron_expression(data["cron_stop"])
-            if not CronSlices.is_valid(data["cron_stop"]):
+            if not CronValidator.parse(data["cron_stop"]):
                 raise ValueError(f"Invalid CRON expression in cron_stop: {data['cron_stop']}")
 
         updated_schedule = WorkloadSchedule(**data)
@@ -149,7 +149,15 @@ async def delete_schedule_route(
     schedule_id: int = Path(..., description="ID of the schedule to delete")
 ):
     logger.info(f"DELETE /schedules/{schedule_id}")
-    success = await db_manager.delete_schedule(schedule_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Schedule not found")
-    return {"status": "deleted"}
+    try:
+        logger.debug(f"Attempting to delete schedule with ID {schedule_id}")
+        success = await db_manager.delete_schedule(schedule_id)
+
+        if not success:
+            logger.warning(f"Schedule with ID {schedule_id} not found")
+            raise HTTPException(status_code=404, detail="Schedule not found")
+        logger.info(f"Successfully deleted schedule with ID {schedule_id}")
+        return {"status": "deleted"}
+    except Exception as e:
+        logger.error(f"Error deleting schedule with ID {schedule_id}: {e}")
+        raise

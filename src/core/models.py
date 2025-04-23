@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
 from pydantic import field_validator
-from crontab import CronSlices
+from cron_validator import CronValidator
 from enum import Enum
 from utils.clean_cron import clean_cron_expression
 
@@ -27,7 +27,7 @@ class WorkloadSchedule(SQLModel, table=True):
             return v
         v = clean_cron_expression(v)
 
-        if not CronSlices.is_valid(v):
+        if not CronValidator.parse(v):
             raise ValueError(f"Invalid CRON expression: {v}")
         return v
 
