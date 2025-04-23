@@ -40,11 +40,6 @@ tasks:
     cmds:
     - kubectl apply -f tests/deployment.yaml
 
-  init-db:
-    desc: initialize DataBase
-    cmds:
-    - cd src && python -m core.init_db
-
 default:
   desc: List available tasks
   cmds:
