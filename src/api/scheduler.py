@@ -5,17 +5,20 @@ from core.dbManager import DatabaseManager
 from core.models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
 from icecream import ic
-from typing import List
+from typing import List, Optional
 from cron_validator import CronValidator
-from typing import Optional
 from datetime import datetime
 
 scheduler = APIRouter(tags=["Schedule Management"])
 db_manager = DatabaseManager()
 
 class ScheduleResponse(BaseModel):
+    """
+    Modèle de réponse pour les opérations sur les programmations.
+    """
     status: str
-    detail: str = None
+    detail: Optional[str] = None
+
 
 @scheduler.get(
     "/schedules",
@@ -23,7 +26,13 @@ class ScheduleResponse(BaseModel):
     summary="Get all workload schedules",
     description="Retrieve all scheduled workload operations"
 )
-async def get_schedules():
+async def get_schedules() -> List[WorkloadSchedule]:
+    """
+    Récupère toutes les programmations de workload.
+
+    Returns:
+        Liste de toutes les programmations enregistrées
+    """
     try:
         logger.info("GET /schedules")
         schedules = await db_manager.get_all_schedules()
@@ -33,14 +42,22 @@ async def get_schedules():
         ic(e)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+
 @scheduler.get(
     "/schedule/{uid}",
     response_model=Optional[WorkloadSchedule],
     summary="Get workload by uid",
-    description="Retrieve one scheduled workload operations"
+    description="Retrieve one scheduled workload operation"
 )
-async def get_schedule_by_uid(uid: str):
-    """Récupère une programmation par son UID"""
+async def get_schedule_by_uid(uid: str) -> Optional[WorkloadSchedule]:
+    """
+    Récupère une programmation par son UID.
+
+    Args:
+        uid: Identifiant unique du workload
+    Returns:
+        La programmation correspondante ou None si non trouvée
+    """
     try:
         logger.info(f"GET /schedule/{uid}")
         schedule = await db_manager.get_schedule(uid)
@@ -64,7 +81,15 @@ async def get_schedule_by_uid(uid: str):
 )
 async def create_schedule(
     schedule: WorkloadSchedule = Body(..., description="The schedule details to create")
-):
+) -> ScheduleResponse:
+    """
+    Crée une nouvelle programmation de workload.
+
+    Args:
+        schedule: Détails de la programmation à créer
+    Returns:
+        Un objet ScheduleResponse indiquant le succès de l'opération
+    """
     try:
         data = schedule.model_dump()
 
@@ -104,7 +129,16 @@ async def create_schedule(
 async def update_schedule_route(
     schedule_id: int = Path(..., description="ID of the schedule to update"),
     schedule: WorkloadSchedule = Body(..., description="The updated schedule details")
-):
+) -> ScheduleResponse:
+    """
+    Met à jour une programmation existante.
+
+    Args:
+        schedule_id: ID de la programmation à mettre à jour
+        schedule: Nouvelles données de la programmation
+    Returns:
+        Un objet ScheduleResponse indiquant le succès de l'opération
+    """
     try:
         data = schedule.model_dump()
 
@@ -113,7 +147,7 @@ async def update_schedule_route(
                 data["last_update"] = datetime.fromisoformat(data["last_update"].replace("Z", "+00:00"))
             except ValueError:
                 data["last_update"] = datetime.utcnow()
-                
+
         if data.get("cron_start"):
             data["cron_start"] = clean_cron_expression(data["cron_start"])
             if not CronValidator.parse(data["cron_start"]):
@@ -139,6 +173,7 @@ async def update_schedule_route(
         logger.error(f"Error updating schedule: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+
 @scheduler.delete(
     "/schedules/{schedule_id}",
     response_model=ScheduleResponse,
@@ -147,7 +182,15 @@ async def update_schedule_route(
 )
 async def delete_schedule_route(
     schedule_id: int = Path(..., description="ID of the schedule to delete")
-):
+) -> ScheduleResponse:
+    """
+    Supprime une programmation existante.
+
+    Args:
+        schedule_id: ID de la programmation à supprimer
+    Returns:
+        Un objet ScheduleResponse indiquant le succès de l'opération
+    """
     logger.info(f"DELETE /schedules/{schedule_id}")
     try:
         logger.debug(f"Attempting to delete schedule with ID {schedule_id}")
@@ -158,6 +201,8 @@ async def delete_schedule_route(
             raise HTTPException(status_code=404, detail="Schedule not found")
         logger.info(f"Successfully deleted schedule with ID {schedule_id}")
         return {"status": "deleted"}
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error deleting schedule with ID {schedule_id}: {e}")
-        raise
+        raise HTTPException(status_code=500, detail=f"Error deleting schedule: {str(e)}")

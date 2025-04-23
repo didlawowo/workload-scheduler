@@ -1,6 +1,5 @@
 from kubernetes import client
 from loguru import logger
-from icecream import ic
 
 def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
     """
