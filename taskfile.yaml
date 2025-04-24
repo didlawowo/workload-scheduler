@@ -40,6 +40,18 @@ tasks:
     cmds:
     - kubectl apply -f tests/deployment.yaml
 
+  coverage-api:
+  desc: "Run API unit tests with code coverage"
+  cmds:
+    - coverage run -m pytest src/tests/test_api.py
+    - coverage report -m
+
+coverage-integration:
+  desc: "Run integration tests with code coverage"
+  cmds:
+    - coverage run -m pytest src/tests/test_integration.py
+    - coverage report -m
+
 default:
   desc: List available tasks
   cmds:
