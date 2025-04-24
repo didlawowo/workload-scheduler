@@ -123,7 +123,30 @@
             </table>
         </div>
 
-        <div class="section">
+        <div id="cronModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>Éditeur d'expression Cron</h3>
+
+                <div class="form-group">
+                    <label for="cronExpressionStart">Cron start:</label>
+                    <input type="text" id="cronExpressionStart" placeholder="Ex: */5 * * * *">
+                    <div id="cronError" class="error">Expression Cron invalide</div>
+
+                    <label for="cronExpressionStop">Cron stop:</label>
+                    <input type="text" id="cronExpressionStop" placeholder="Ex: */5 * * * *">
+                    <div id="cronError" class="error">Expression Cron invalide</div>
+
+                    <div id="cronInfo" class="cron-helper"> </div>
+                </div>
+                <div class="actions">
+                    <button id="cancelBtn" class="btn cancel-btn">Annuler</button>
+                    <button id="saveBtn" class="btn save-btn">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="statefulsets">
             <h2>Statefulsets</h2>
             <p>There are {{ sts|length }} statefulsets in the cluster.</p>
             <table>
