@@ -148,17 +148,23 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             cronStart.value = data.cron_start ? cleanCronExpression(data.cron_start) : defaultCronValue;
             cronStop.value = data.cron_stop ? cleanCronExpression(data.cron_stop) : defaultCronValue;
             currentScheduleId = data.id;
+            
+            if (data.name) {
+                let currentWorkloadNameField = document.getElementById('currentWorkloadName');
+                if (!currentWorkloadNameField) {
+                    currentWorkloadNameField = document.createElement('input');
+                    currentWorkloadNameField.type = 'hidden';
+                    currentWorkloadNameField.id = 'currentWorkloadName';
+                    document.querySelector('.modal-content').appendChild(currentWorkloadNameField);
+                }
+                currentWorkloadNameField.value = data.name;
+                console.log(`Nom actuel du workload préservé: ${data.name}`);
+            }
+            
             saveBtn.dataset.mode = 'update';
             document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';
             
-            if (data.name && data.name.includes('-')) {
-                const nameParts = data.name.split('-');
-                if (nameParts.length >= 3) {
-                    currentAction = nameParts[0] || currentAction;
-                    currentName = nameParts[1] || currentName;
-                    currentDirection = nameParts[2] || currentDirection;
-                }
-            }
+            currentStatus = data.status;
             
             if (resourceName) {
                 currentName = resourceName;
@@ -169,6 +175,7 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             currentScheduleId = null;
             saveBtn.dataset.mode = 'create';
             document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
+            currentStatus = "not scheduled";
         }
         
         console.log("Workload info:", {
@@ -176,7 +183,8 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             name: currentName,
             direction: currentDirection,
             scheduleId: currentScheduleId,
-            mode: saveBtn.dataset.mode
+            mode: saveBtn.dataset.mode,
+            status: currentStatus
         });
     })
     .catch(error => {
@@ -184,6 +192,7 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
         currentScheduleId = null;
         saveBtn.dataset.mode = 'create';
         document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
+        currentStatus = "not scheduled";
     })
     .finally(() => {
         modal.style.display = 'block';
@@ -234,11 +243,16 @@ saveBtn.addEventListener('click', () => {
         return;
     }
     
-    const workloadName = `${currentAction}-${currentName}-${currentDirection}`;
+    // Générer le nom du workload uniquement pour les nouveaux workloads, pas pour les mises à jour
+    const workloadName = isUpdate ? document.getElementById('currentWorkloadName').value || `${currentAction}-${currentName}-${currentDirection}` : `${currentAction}-${currentName}-${currentDirection}`;
+    
     console.log("Nom du workload à utiliser:", workloadName);
     console.log("Mode:", isUpdate ? "UPDATE" : "CREATE", "ScheduleID:", currentScheduleId);
 
     const nowStr = new Date().toISOString();
+
+    const hasCronExpression = currentCronStartValue !== "* * * * *" || currentCronStopValue !== "* * * * *";
+    const workloadStatus = hasCronExpression ? "scheduled" : "not scheduled";
 
     if (isUpdate) {
         console.log(`Mise à jour du schedule ID: ${currentScheduleId}`);
@@ -249,10 +263,10 @@ saveBtn.addEventListener('click', () => {
                 id: currentScheduleId,
                 cron_start: currentCronStartValue,
                 cron_stop: currentCronStopValue,
-                name: workloadName,
                 uid: currentUid,
                 active: true,
-                last_update: nowStr
+                last_update: nowStr,
+                status: workloadStatus
             })
         })
         .then(response => {
@@ -282,7 +296,7 @@ saveBtn.addEventListener('click', () => {
                 uid: currentUid,
                 cron_start: currentCronStartValue,
                 cron_stop: currentCronStopValue,
-                status: "scheduled",
+                status: workloadStatus,
                 active: true,
                 resource_type: currentAction,
                 resource_name: currentName,
@@ -312,6 +326,7 @@ saveBtn.addEventListener('click', () => {
                 cron_start: currentCronStartValue,
                 cron_stop: currentCronStopValue,
                 resource_name: currentName,
+                status: workloadStatus
             });
         });
     }
