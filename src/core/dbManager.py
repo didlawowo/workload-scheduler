@@ -84,7 +84,7 @@ class DatabaseManager:
 
         async with self.async_session() as session:
             try:
-                ic(schedule)
+                # ic(schedule)
                 if isinstance(schedule.get("last_update"), str):
                     try:
                         schedule["last_update"] = datetime.fromisoformat(schedule["last_update"].replace("Z", "+00:00"))
@@ -117,7 +117,7 @@ class DatabaseManager:
                 return schedules
             except Exception as e:
                 logger.error(f"Error fetching schedules: {e}")
-                ic(e)
+
                 raise e
 
     async def get_schedule(self, uid: str):

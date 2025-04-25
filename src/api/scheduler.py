@@ -39,7 +39,7 @@ async def get_schedules() -> List[WorkloadSchedule]:
         return schedules
     except Exception as e:
         logger.error(f"Error in GET /schedules: {e}")
-        ic(e)
+       
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
@@ -59,7 +59,7 @@ async def get_schedule_by_uid(uid: str) -> Optional[WorkloadSchedule]:
         La programmation correspondante ou None si non trouvée
     """
     try:
-        logger.info(f"GET /schedule/{uid}")
+        logger.debug(f"GET /schedule/{uid}")
         schedule = await db_manager.get_schedule(uid)
 
         if not schedule:
@@ -74,7 +74,7 @@ async def get_schedule_by_uid(uid: str) -> Optional[WorkloadSchedule]:
 
 
 @scheduler.post(
-    "/schedules",
+    "/schedule",
     response_model=ScheduleResponse,
     summary="Create a new schedule",
     description="Schedule a new workload operation"
