@@ -51,10 +51,8 @@
                         <td>{{ d.name }}</td>
                         <td>{{ d.namespace }}</td>
 
-                        <td>{{ d.replicas }}</td>
-                        <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
-                            {{ d.available_replicas }}
-                        </td>
+                        <td {% if d.replicas is none %}>0{% else %}>{{ d.replicas }}{% endif %}</td>
+                        <td {% if d.available_replicas is none %}class="btn-danger">0{% else %}>{{ d.available_replicas }}{% endif %}</td>
                         <!-- <td>
                             {% if d.labels %}
                             <ul style="list-style-type: none; padding: 0; margin: 0;">
@@ -77,8 +75,11 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show
-                                        Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details
+                                        {% if not pod.resource_requests or not pod.resource_limits %}
+                                          <span style="color: orange; margin-left: 5px;">⚠️</span>
+                                        {% endif %}
+                                    </button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -167,10 +168,8 @@
                         <td>{{ d.name }}</td>
                         <td>{{ d.namespace }}</td>
 
-                        <td>{{ d.replicas }}</td>
-                        <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
-                            {{ d.available_replicas }}
-                        </td>
+                        <td {% if d.replicas is none %}>0{% else %}>{{ d.replicas }}{% endif %}</td>
+                        <td {% if d.available_replicas is none %}class="btn-danger">0{% else %}>{{ d.available_replicas }}{% endif %}</td>
 
                         <td>
                             {% for pod in d.pods %}
@@ -183,8 +182,11 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show
-                                        Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details
+                                        {% if not pod.resource_requests or not pod.resource_limits %}
+                                          <span style="color: orange; margin-left: 5px; font-weight: bold;">(!)</span>
+                                        {% endif %}
+                                      </button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
