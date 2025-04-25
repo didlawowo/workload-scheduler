@@ -184,8 +184,7 @@ def status(request: Request):
 
 # Run the application
 async def main():
-    logger.info("Starting Workload Scheduler...")
-    logger.info("🚀 Application ready.")
+    logger.info("🚀 Application starting.")
 
 if __name__ == "__main__":
     if platform.system() == "Darwin":
@@ -200,7 +199,7 @@ if __name__ == "__main__":
         uvicorn_config = uvicorn.Config(
             app,
             host="0.0.0.0",
-            port=8000,
+            port=8001,
             reload=is_dev,
             reload_dirs=["."]
         )
