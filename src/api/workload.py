@@ -180,6 +180,10 @@ async def scale_up_app(uid: str) -> Dict[str, Any]:
         for deploy in l.items :
             if deploy.metadata.uid == uid:
                 ic(deploy.metadata.uid)
+                body = {"spec": {"replicas": 1}}
+                apps_v1.patch_namespaced_deployment_scale(
+                    name=deploy.metadata.name, namespace=deploy.metadata.namespace, body=body
+                )
                 logger.success("scaled up deployment")
        
             
@@ -213,12 +217,11 @@ async def scale_up_app(uid: str) -> Dict[str, Any]:
         #     f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
         # )
         # Define the patch to scale the Deployment
-        body = {"spec": {"replicas": 1}}
-        if deploy.kind  == "Deployment":
-            # Define the patch to scale the Deployment
-            apps_v1.patch_namespaced_deployment_scale(
-                name=deploy.name, namespace=deploy.namespace, body=body
-            )
+      
+        # Step 2: scale down the Deployment
+        # logger.info(f"Scaling down Deployment '{name}' in namespace '{namespace}'")
+        # try:
+        #     body = {"spec": {"replicas": 1}}
         # elif resource_type == "sts":
         #     # Define the patch to scale the Sts
 
