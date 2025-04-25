@@ -50,20 +50,20 @@ def formatter(record):
 
 
 # Suppression des handlers existants pour éviter tout conflit
-logger.remove()
+# logger.remove()
 
-# Ajout du nouveau handler avec le formateur personnalisé
-# Notez l'utilisation de format="{message}" qui laisse notre formateur gérer la structure complète
-logger.add(
-    sys.stdout,
-    format="{message}",  # Format minimal
-    serialize=False,  # Désactivation de la sérialisation automatique
-    colorize=False,  # Désactivation de la coloration pour éviter les caractères d'échappement
-    catch=True,  # Capture les erreurs de logging
-)
+# # Ajout du nouveau handler avec le formateur personnalisé
+# # Notez l'utilisation de format="{message}" qui laisse notre formateur gérer la structure complète
+# logger.add(
+#     sys.stdout,
+#     format="{message}",  # Format minimal
+#     serialize=False,  # Désactivation de la sérialisation automatique
+#     colorize=False,  # Désactivation de la coloration pour éviter les caractères d'échappement
+#     catch=True,  # Capture les erreurs de logging
+# )
 
 # Configuration du handler pour utiliser notre formateur
-logger = logger.patch(lambda record: record.update(message=formatter(record)))
+# logger = logger.patch(lambda record: record.update(message=formatter(record)))
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -141,19 +141,7 @@ async def init_database():
         await db.store_uid(ds.get("uid"), ds.get('name'))
     logger.success("UIDs stored in database.")
 
-# Démarrer le scheduler lors du démarrage de l'application
-# @app.on_event("startup")
-# async def startup_event():
-#     await init_database()
-#     asyncio.create_task(scheduler_engine.start())
-#     logger.info("Scheduler engine started in background")
-
-# Arrêter proprement le scheduler lors de l'arrêt de l'application
-# @app.on_event("shutdown")
-# async def shutdown_event():
-#     await scheduler_engine.stop()
-#     logger.info("Scheduler engine stopped") # TODO faire le schedule dans un docker
-
+ 
 
 @app.get("/", response_class=HTMLResponse)
 def status(request: Request):

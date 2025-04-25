@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlmodel import select, text
 from .models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
-from icecream import ic
+from icecream import ic  # noqa: F401
 from cron_validator import CronValidator
 from typing import Dict, Any
 

@@ -1,6 +1,6 @@
 const modal = document.getElementById('cronModal');
 const closeBtn = document.querySelector('.close');
-const cancelBtn = document.getElementById('cancelBtn');
+// const cancelBtn = document.getElementById('cancelBtn');
 const saveBtn = document.getElementById('saveBtn');
 const cronStart = document.getElementById('cronExpressionStart');
 const cronStop = document.getElementById('cronExpressionStop');
@@ -14,23 +14,31 @@ function toggleWorkloadDetails(button) {
     button.textContent = podDetails.classList.contains('collapsed') ? 'Show Details' : 'Hide Details';
 }
 
-function manageWorkloadStatus(type, name, namespace, action, uid) {
+function manageWorkloadStatus(type, action, uid) {
     let url = ``;
     if (action === 'down') {
-        url = `/down/${type}/${uid}`;
+        url = `/manage/down/${type}/${uid}`;
     } else if (action === 'up') {
-        url = `/up/${type}/${uid}`;
+        url = `/manage/up/${type}/${uid}`;
     } else if (action === 'down-all') {
         url = `/manage-all/down`;
     } else if (action === 'up-all') {
         url = `/manage-all/up`;
     }
     fetch(url, { method: 'GET' })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             window.location.reload();
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            alert(`Une erreur est survenue: ${error.message}`);
+        });
 }
 
 /* modal management */
@@ -43,7 +51,7 @@ function closeModal() {
     currentScheduleId = null;
 }
 closeBtn.addEventListener('click', closeModal);
-cancelBtn.addEventListener('click', closeModal);
+// cancelBtn.addEventListener('click', closeModal);
 
 window.addEventListener('click', (event) => {
     if (event.target === modal) {
@@ -55,8 +63,10 @@ window.addEventListener('click', (event) => {
 let defaultCronValue = "*/5 * * * *";
 let currentCronStartValue = defaultCronValue;
 let currentCronStopValue = defaultCronValue;
-let currentAction, currentName, currentNamespace, currentDirection, currentUid;
+let currentAction, currentName, currentDirection, currentUid;
 let currentScheduleId = null;
+let currentStatus = "not scheduled";
+let currentNamespace = "";
 
 function isValidCron(expression) {
     if (!expression) return false;
@@ -117,6 +127,7 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
     currentName = resourceName;
     currentAction = resourceType;
     currentDirection = direction;
+    currentNamespace = ""; 
     
     cronStart.value = defaultCronValue;
     cronStop.value = defaultCronValue;
@@ -225,7 +236,7 @@ saveBtn.addEventListener('click', () => {
     cronStart.value = cron_start_value;
     cronStop.value = cron_stop_value;
 
-    if (!isValidCron(cron_start_value) || (!isValidCron(cron_stop_value))){
+    if (!isValidCron(cron_start_value) || !isValidCron(cron_stop_value)){
         cronError.style.display = 'block';
         cronError.textContent = `Expression CRON invalide. Format attendu: minute heure jour_du_mois mois jour_de_la_semaine`;
         return;
@@ -346,6 +357,11 @@ function getListSchedule() {
         }
         return response.json();
     })
+    .then(data => {
+        console.log('Programmations récupérées:', data);
+        // Mettre à jour le tableau avec les données récupérées
+        // updateScheduleTable(data);
+    })
     .catch(error => {
         console.error('Erreur lors de la récupération des programmations:', error);
     });
@@ -365,7 +381,7 @@ function deleteSchedule(scheduleId) {
         })
         .then(data => {
             console.log('Programmation supprimée:', data);
-            getListSchedule();
+            // getListSchedule();
         })
         .catch(error => {
             console.error('Erreur lors de la suppression de la programmation:', error);
@@ -374,18 +390,18 @@ function deleteSchedule(scheduleId) {
 }
 
 // Fonction pour éditer un workload existant depuis le tableau
-function editWorkload(scheduleId, cronValue) {
-    currentScheduleId = scheduleId;
+// function editWorkload(scheduleId, cronValue) {
+//     currentScheduleId = scheduleId;
 
-    cronStart.value = cronValue === 'Non programmé' ? defaultCronValue : cronValue;
-    cronError.style.display = 'none';
+//     cronStart.value = cronValue === 'Non programmé' ? defaultCronValue : cronValue;
+//     cronError.style.display = 'none';
 
-    document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';
+//     document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';
 
-    saveBtn.dataset.mode = 'update';
+//     saveBtn.dataset.mode = 'update';
 
-    modal.style.display = 'block';
-}
+//     modal.style.display = 'block';
+// }
 
 function decodeCronExpression(expression) {
     if (!expression || !isValidCron(expression)) {

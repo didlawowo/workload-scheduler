@@ -6,7 +6,7 @@ from croniter import croniter
 from core.models import WorkloadSchedule, ScheduleStatus
 from utils.helpers import RetryableAsyncClient
 import os
-from icecream import ic
+from icecream import ic  # noqa: F401
 from types import SimpleNamespace
 
 

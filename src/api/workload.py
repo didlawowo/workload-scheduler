@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from kubernetes import client
 from loguru import logger
 from typing import Any, Dict
-from utils.config import protected_namespaces, shutdown_label_selector
+from utils.config import protected_namespaces
 from utils.helpers import core_v1, apps_v1
 from core.kub_list import list_all_deployments, list_all_sts
 from pydantic import BaseModel
@@ -75,7 +75,7 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
         logger.error(f"Error while scaling down all workload Error: {e}")
 
 @workload.get(
-    "/{action}/{resource_type}/{uid}",
+    "/manage/{action}/{resource_type}/{uid}",
     response_model=WorkloadResponse,
     summary="Manage status a specific resource",
     description="Manage deployment, statefulset, or daemonset status"
@@ -100,6 +100,10 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
                         name=deploy.metadata.name, namespace=deploy.metadata.namespace, body=body
                     )
                     logger.success(f"Scaled {[action]} deplyment")
+                    return {
+            "status": "success",
+            "message": f"deployment '{deploy.metadata.name}' in namespace '{deploy.metadata.namespace}' has been scaled '{action}'",
+        }
         
         elif resource_type == "sts":
             c = apps_v1.list_stateful_set_for_all_namespaces()
@@ -113,6 +117,10 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
                         name=stateful_set.metadata.name, namespace=stateful_set.metadata.namespace, body=body
                     )
                     logger.success(f"Scaled {[action]} sts")
+                    return {
+            "status": "success",
+            "message": f"deployment '{stateful_set.metadata.name}' in namespace '{stateful_set.metadata.namespace}' has been scaled '{action}'",
+        }
 
         elif resource_type == "ds":
             c = apps_v1.list_daemon_set_for_all_namespaces()
@@ -126,11 +134,16 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
                         name=daemonset.metadata.name, namespace=daemonset.metadata.namespace, body=body
                     )
                     logger.success(f"Scaled {[action]} daemonset")
-
-        # except client.exceptions.ApiException as e:
-        #     return {"status": "error", "message": str(e)}
-
-        # restore auto-sync
+            
+                    return {
+            "status": "success",
+            "message": f"deployment '{daemonset.metadata.name}' in namespace '{daemonset.metadata.namespace}' has been scaled '{action}'",
+        }
+        else:
+            logger.error(f"Unknown resource type: {resource_type}")
+            return {"status": "error", "message": f"Unknown resource type: {resource_type}"}
+     
+        # TODO restore auto-sync
   
         # application_name = c.metadata.labels["argocd.argoproj.io/instance"]
         # Step 1: enable auto-sync
@@ -143,29 +156,9 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
         # logger.success(
         #     f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
         # )
-        # Define the patch to scale the Deployment
       
-        # Step 2: scale down the Deployment
-        # logger.info(f"Scaling down Deployment '{name}' in namespace '{namespace}'")
-        # try:
-        #     body = {"spec": {"replicas": 1}}
-        # elif resource_type == "sts":
-        #     # Define the patch to scale the Sts
+   
 
-        #     apps_v1.patch_namespaced_stateful_set_scale(
-        #         name=name, namespace=namespace, body=body
-        #     )
-        # elif resource_type == "ds":
-        #     logger.info("scaling up ds")
-        #     body_ds = {"spec": {"template": {"spec": {"nodeSelector": None}}}}
-        #     apps_v1.patch_namespaced_daemon_set(
-        #         name=name, namespace=namespace, body=body_ds
-        #     )
-            # logger.debug(res)
-        return {
-            "status": "success",
-            "message": f"deployment '{deploy.metadata.name}' in namespace '{deploy.metadata.namespace}' has been scaled '{action}'",
-        }
     except client.exceptions.ApiException as e:
         logger.error(e)
         return {"status": "error", "message": str(e)}

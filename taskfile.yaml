@@ -23,7 +23,7 @@ tasks:
     desc: Run the app localy
     dir: src
     cmds:
-    - pipenv run python main.py
+    - pipenv run python main.py && pipenv run python scheduler_engine.py
 
   shell:
     desc: Open a shell from virtual env
@@ -61,7 +61,6 @@ tasks:
     cmds:
     - coverage run -m pytest src/tests/test_integration.py
     - coverage report -m
-
   # TODO add lib dep requirements.txt
 
 default:
