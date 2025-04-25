@@ -18,7 +18,7 @@ from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
 from utils.config import protected_namespaces
 from utils.helpers import apps_v1, core_v1
-from core.scheduler_engine import SchedulerEngine
+from scheduler_engine import SchedulerEngine
 from core.dbManager import DatabaseManager
 
 os.environ["TZ"] = "Europe/Paris"
@@ -79,7 +79,7 @@ app.include_router(router=health_route)
 db = DatabaseManager()
 
 # Initialiser le scheduler avec un intervalle personnalisé (en secondes)
-scheduler_engine = SchedulerEngine(db_manager=db, check_interval=60)
+scheduler_engine = SchedulerEngine(check_interval=60)
 
 logger.info("Starting the application...")
 
@@ -142,17 +142,17 @@ async def init_database():
     logger.success("UIDs stored in database.")
 
 # Démarrer le scheduler lors du démarrage de l'application
-@app.on_event("startup")
-async def startup_event():
-    await init_database()
-    asyncio.create_task(scheduler_engine.start())
-    logger.info("Scheduler engine started in background")
+# @app.on_event("startup")
+# async def startup_event():
+#     await init_database()
+#     asyncio.create_task(scheduler_engine.start())
+#     logger.info("Scheduler engine started in background")
 
 # Arrêter proprement le scheduler lors de l'arrêt de l'application
-@app.on_event("shutdown")
-async def shutdown_event():
-    await scheduler_engine.stop()
-    logger.info("Scheduler engine stopped")
+# @app.on_event("shutdown")
+# async def shutdown_event():
+#     await scheduler_engine.stop()
+#     logger.info("Scheduler engine stopped") # TODO faire le schedule dans un docker
 
 
 @app.get("/", response_class=HTMLResponse)

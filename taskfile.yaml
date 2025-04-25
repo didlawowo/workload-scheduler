@@ -26,7 +26,7 @@ tasks:
     - pipenv run python main.py
 
   shell:
-    desc: Open a shell in the running container
+    desc: Open a shell from virtual env
     cmds:
     - pipenv shell
 
@@ -38,7 +38,7 @@ tasks:
   apply-deployment:
     desc: apply a deployment kubernetes
     cmds:
-    - kubectl apply -f tests/deployment.yaml
+    - kubectl apply -f src/tests/deployment.yaml
 
   test-api:
     desc: run API unit tests
@@ -61,6 +61,8 @@ tasks:
     cmds:
     - coverage run -m pytest src/tests/test_integration.py
     - coverage report -m
+
+  # TODO add lib dep requirements.txt
 
 default:
   desc: List available tasks

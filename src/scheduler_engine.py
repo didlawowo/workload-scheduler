@@ -3,35 +3,34 @@ from datetime import datetime
 import pytz
 from loguru import logger
 from croniter import croniter
-from core.dbManager import DatabaseManager
 from core.models import WorkloadSchedule, ScheduleStatus
-from utils.helpers import apps_v1
-from api.workload import scale_up_app, shutdown_app
+from utils.helpers import RetryableAsyncClient
+import os
+from icecream import ic
+from types import SimpleNamespace
 
 class SchedulerEngine:
     """
     Moteur de scheduling qui vérifie les expressions cron pour démarrer/arrêter les workloads.
     
     Attributes:
-        db_manager: Gestionnaire de base de données pour récupérer et mettre à jour les programmations
         check_interval: Intervalle (en secondes) entre chaque vérification des programmations
         running: Indicateur si le scheduleur est en cours d'exécution
         _task: Tâche asyncio pour le processus en arrière-plan
     """
     
-    def __init__(self, db_manager: DatabaseManager, check_interval: int = 60):
+    def __init__(self, check_interval: int = 60):
         """
         Initialise le moteur de scheduling.
         
         Args:
-            db_manager: Gestionnaire de base de données
             check_interval: Intervalle de vérification en secondes (par défaut: 60)
         """
-        self.db_manager = db_manager
         self.check_interval = check_interval
         self.running = False
         self._task = None
-        self.timezone = pytz.timezone('Europe/Paris')
+        self.timezone = pytz.timezone('Europe/Paris') # TODO faire une variable d'env
+        self.client = RetryableAsyncClient()
         
     async def start(self):
         """
@@ -84,26 +83,30 @@ class SchedulerEngine:
         Vérifie toutes les programmations et exécute les actions nécessaires.
         """
         try:
-            schedules = await self.db_manager.get_all_schedules()
-            logger.info(f"Vérification de {len(schedules)} programmations à {datetime.now(self.timezone).strftime('%H:%M:%S')}")
+            schedules = await self.client.get(url=f"{os.getenv('API_URL')}/schedules")
+            ic(schedules.json)
+            ic(schedules.content)
+            schedules_dict = schedules.json()
+            ic(schedules_dict)
+            logger.info(f"Vérification de {len(schedules_dict)} programmations à {datetime.now(self.timezone).strftime('%H:%M:%S')}")
             
-            if not schedules:
-                logger.warning("Aucune programmation trouvée dans la base de données")
+            if not schedules_dict:
+                logger.info("Aucune programmation trouvée dans la base de données")
                 return
-                
-            for idx, schedule in enumerate(schedules):
-                logger.debug(f"Programmation {idx+1}/{len(schedules)}: "
-                           f"ID={schedule.id}, "
-                           f"Nom={schedule.name}, "
-                           f"UID={schedule.uid}, "
-                           f"Status={schedule.status}, "
-                           f"Active={schedule.active}, "
-                           f"Start={schedule.cron_start}, "
-                           f"Stop={schedule.cron_stop}")
+            schedule_object = [SimpleNamespace(**item) for item in schedules_dict]
+            ic(schedule_object[0])
+            for schedule in schedule_object:
+                logger.debug(f"ID= {schedule.id}, "
+                           f"Nom= {schedule.name}, "
+                           f"UID= {schedule.uid}, "
+                           f"Status= {schedule.status}, "
+                           f"Active= {schedule.active}, "
+                           f"Start= {schedule.cron_start}, "
+                           f"Stop= {schedule.cron_stop}")
             
             now = datetime.now(self.timezone)
             
-            for schedule in schedules:
+            for schedule in schedule_object:
                 await self._process_schedule(schedule, now)
                 
         except Exception as e:
@@ -118,6 +121,7 @@ class SchedulerEngine:
             schedule: La programmation à traiter
             now: L'heure actuelle
         """
+        ic(schedule.id)
         try:
             if not schedule.active:
                 logger.debug(f"Programmation {schedule.id} ({schedule.name}, UID: {schedule.uid}) inactive, ignorée")
@@ -131,10 +135,10 @@ class SchedulerEngine:
             
             if should_start and schedule.status == ScheduleStatus.NOT_SCHEDULED:
                 logger.info(f"Déclenchement du démarrage pour {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})")
-                await self._start_workload(schedule)
+                # await self._start_workload(schedule)
             elif should_stop and schedule.status == ScheduleStatus.SCHEDULED:
                 logger.info(f"Déclenchement de l'arrêt pour {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})")
-                await self._stop_workload(schedule)
+                # await self._stop_workload(schedule)
             else:
                 conditions = []
                 if schedule.status == ScheduleStatus.NOT_SCHEDULED and not should_start:
@@ -194,24 +198,16 @@ class SchedulerEngine:
         """
         try:
             logger.info(f"🚀 Démarrage du workload: {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})")
-            resource_info = await self._get_resource_info_by_uid(schedule.uid)
-            
-            if not resource_info:
-                logger.error(f"❌ Workload non trouvé avec l'UID: {schedule.uid}")
-                return
-                
-            namespace = resource_info["namespace"]
-            resource_type = resource_info["type"]
-            name = resource_info["name"]
-            logger.info(f"Informations workload trouvées: {resource_type}/{namespace}/{name}")
-            result = await scale_up_app(resource_type, namespace, name)
+
+            result = await self.client.get(url=f"{os.getenv('API_URL')}/up/{schedule.uid}")
+            # TODO faire call api
+            ic(result)
             
             if result["status"] == "success":
                 updated_schedule = schedule
                 updated_schedule.status = ScheduleStatus.SCHEDULED
                 updated_schedule.last_update = datetime.now(self.timezone)
-                
-                await self.db_manager.update_schedule(schedule.id, updated_schedule)
+                self.client.put(url=f"{os.getenv('API_URL')}/schedules/{schedule.id}")
                 logger.success(f"✅ Workload démarré avec succès: {schedule.name} (UID: {schedule.uid})")
             else:
                 logger.error(f"❌ Échec du démarrage du workload {schedule.name} (UID: {schedule.uid}): {result['message']}")
@@ -229,24 +225,15 @@ class SchedulerEngine:
         """
         try:
             logger.info(f"🛑 Arrêt du workload: {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})")
-            resource_info = await self._get_resource_info_by_uid(schedule.uid)
-            
-            if not resource_info:
-                logger.error(f"❌ Workload non trouvé avec l'UID: {schedule.uid}")
-                return
-                
-            namespace = resource_info["namespace"]
-            resource_type = resource_info["type"]
-            name = resource_info["name"]
-            logger.info(f"Informations workload trouvées: {resource_type}/{namespace}/{name}")
-            result = await shutdown_app(resource_type, namespace, name)
+             # TODO faire un call a l'api
+            result = "toto"
             
             if result["status"] == "success":
                 updated_schedule = schedule
                 updated_schedule.status = ScheduleStatus.NOT_SCHEDULED
                 updated_schedule.last_update = datetime.now(self.timezone)
                 
-                await self.db_manager.update_schedule(schedule.id, updated_schedule)
+                self.client.put(url=f"{os.getenv('API_URL')}/schedules/{schedule.id}")
                 logger.success(f"✅ Workload arrêté avec succès: {schedule.name} (UID: {schedule.uid})")
             else:
                 logger.error(f"❌ Échec de l'arrêt du workload {schedule.name} (UID: {schedule.uid}): {result['message']}")
@@ -255,47 +242,5 @@ class SchedulerEngine:
             logger.error(f"Erreur lors de l'arrêt du workload {schedule.name} (UID: {schedule.uid}): {e}")
             logger.exception(e)
     
-    async def _get_resource_info_by_uid(self, uid: str):
-        """
-        Récupère les informations d'un workload à partir de son UID.
-        
-        Args:
-            uid: L'UID du workload à rechercher
-        Returns:
-            Un dictionnaire contenant les informations du workload ou None si non trouvé
-        """
-        try:
-            deployments = apps_v1.list_deployment_for_all_namespaces(watch=False)
-            for deploy in deployments.items:
-                if deploy.metadata.uid == uid:
-                    return {
-                        "type": "deploy",
-                        "namespace": deploy.metadata.namespace,
-                        "name": deploy.metadata.name
-                    }
-            
-            statefulsets = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
-            for sts in statefulsets.items:
-                if sts.metadata.uid == uid:
-                    return {
-                        "type": "sts",
-                        "namespace": sts.metadata.namespace,
-                        "name": sts.metadata.name
-                    }
-            
-            daemonsets = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
-            for ds in daemonsets.items:
-                if ds.metadata.uid == uid:
-                    return {
-                        "type": "ds",
-                        "namespace": ds.metadata.namespace,
-                        "name": ds.metadata.name
-                    }
-            
-            logger.warning(f"Aucun workload trouvé avec l'UID: {uid}")
-            return None
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la recherche du workload avec l'UID {uid}: {e}")
-            logger.exception(e)
-            return None
+if __name__ == "__main__":
+        SchedulerEngine(check_interval=60)

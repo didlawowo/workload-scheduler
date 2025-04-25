@@ -547,10 +547,7 @@ function updateCronInfo() {
     }
     
     htmlContent += `
-        <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>
-        <p><strong>Exemple:</strong> "*/5 * * * *" = toutes les 5 minutes</p>
-        <p><strong>Exemple:</strong> "0 9 * * 1-5" = à 9h tous les jours de la semaine</p>
-    `;
+        <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>    `;
     
     htmlContent += '</div>';
     cronInfoDiv.innerHTML = htmlContent;

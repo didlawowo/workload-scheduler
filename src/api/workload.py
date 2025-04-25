@@ -6,6 +6,7 @@ from utils.config import protected_namespaces, shutdown_label_selector
 from utils.helpers import core_v1, apps_v1
 from core.kub_list import list_all_deployments, list_all_sts
 from pydantic import BaseModel
+from icecream import ic
 
 class PodStatus(BaseModel):
     name: str
@@ -163,41 +164,44 @@ async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[st
 
 
 @workload.get(
-    "/up/{resource_type}/{namespace}/{name}",
+    "/up/{uid}",
     response_model=WorkloadResponse,
     summary="Scale up a specific resource",
     description="Scale up a deployment, statefulset, or daemonset"
 )
-async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[str, Any]:
+async def scale_up_app(uid: str) -> Dict[str, Any]:
     """
     scale up the specified Deployment, considering protected namespaces and labels.
     """
-    logger.info(f"Scaling up {resource_type} '{name}' in namespace '{namespace}'")
+    logger.info(f"Scaling up {uid}'")
 
-    if resource_type == "deploy":
-        try:
-            c = apps_v1.read_namespaced_deployment(name, namespace)
-            logger.success("scaled up deployment")
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
+    try:
+        c = apps_v1.list_deployment_for_all_namespaces()
+        for deploy in c.items :
+            if deploy.metadata.uid == uid:
+                ic(deploy.metadata.uid)
+                logger.success("scaled up deployment")
+                return deploy
+    except client.exceptions.ApiException as e:
+        return {"status": "error", "message": str(e)}
 
-    elif resource_type == "sts":
-        try:
-            c = apps_v1.read_namespaced_stateful_set(name, namespace)
-            logger.success("scaled up sts")
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
+    # elif resource_type == "sts":
+    #     try:
+    #         c = apps_v1.read_namespaced_stateful_set(name, namespace)
+    #         logger.success("scaled up sts")
+    #     except client.exceptions.ApiException as e:
+    #         return {"status": "error", "message": str(e)}
 
-    elif resource_type == "ds":
-        try:
-            c = apps_v1.read_namespaced_daemon_set(name=name, namespace=namespace)
-            logger.success("scaled up ds")
+    # elif resource_type == "ds":
+    #     try:
+    #         c = apps_v1.read_namespaced_daemon_set(name=name, namespace=namespace)
+    #         logger.success("scaled up ds")
 
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
+        # except client.exceptions.ApiException as e:
+        #     return {"status": "error", "message": str(e)}
 
     # restore auto-sync
-    try:
+    # try:
         # application_name = c.metadata.labels["argocd.argoproj.io/instance"]
         # Step 1: enable auto-sync
         # logger.info(f"Enabling auto-sync for application '{application_name}'")
@@ -210,31 +214,31 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
         #     f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
         # )
         # Define the patch to scale the Deployment
-        body = {"spec": {"replicas": 1}}
-        if resource_type == "deploy":
-            apps_v1.patch_namespaced_deployment_scale(
-                name=name, namespace=namespace, body=body
-            )
-        elif resource_type == "sts":
-            # Define the patch to scale the Sts
+        # body = {"spec": {"replicas": 1}}
+        # if resource_type == "deploy":
+        #     apps_v1.patch_namespaced_deployment_scale(
+        #         name=name, namespace=namespace, body=body
+        #     )
+        # elif resource_type == "sts":
+        #     # Define the patch to scale the Sts
 
-            apps_v1.patch_namespaced_stateful_set_scale(
-                name=name, namespace=namespace, body=body
-            )
-        elif resource_type == "ds":
-            logger.info("scaling up ds")
-            body_ds = {"spec": {"template": {"spec": {"nodeSelector": None}}}}
-            apps_v1.patch_namespaced_daemon_set(
-                name=name, namespace=namespace, body=body_ds
-            )
-            # logger.debug(res)
-        return {
-            "status": "success",
-            "message": f"{resource_type} '{name}' in namespace '{namespace}' has been scaled up",
-        }
-    except client.exceptions.ApiException as e:
-        logger.error(e)
-        return {"status": "error", "message": str(e)}
+        #     apps_v1.patch_namespaced_stateful_set_scale(
+        #         name=name, namespace=namespace, body=body
+        #     )
+        # elif resource_type == "ds":
+        #     logger.info("scaling up ds")
+        #     body_ds = {"spec": {"template": {"spec": {"nodeSelector": None}}}}
+        #     apps_v1.patch_namespaced_daemon_set(
+        #         name=name, namespace=namespace, body=body_ds
+        #     )
+        #     # logger.debug(res)
+        # return {
+        #     "status": "success",
+        #     "message": f"{resource_type} '{name}' in namespace '{namespace}' has been scaled up",
+        # }
+    # except client.exceptions.ApiException as e:
+    #     logger.error(e)
+    #     return {"status": "error", "message": str(e)}
 
 
 @workload.get(

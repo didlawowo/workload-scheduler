@@ -162,7 +162,7 @@ async def update_schedule_route(
 
         success = await db_manager.update_schedule(schedule_id, updated_schedule)
         if not success:
-            raise HTTPException(status_code=404, detail="Schedule not found")
+            raise HTTPException(status_code=404, detail="Schedule not found") # TODO faire un log
         return {"status": "updated"}
     except ValueError as ve:
         logger.error(f"Validation error: {ve}")

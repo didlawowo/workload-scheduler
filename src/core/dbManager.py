@@ -144,7 +144,7 @@ class DatabaseManager:
         async with self.async_session() as session:
             schedule = await session.get(WorkloadSchedule, schedule_id)
             if not schedule:
-                logger.error(f"Schedule with ID {schedule_id} not found")
+                logger.error(f"Schedule with ID {schedule_id} not found") # TODO Gérer l'erreur coté front
                 return False
 
             schedule_data = updated_schedule.model_dump(exclude={"id"})

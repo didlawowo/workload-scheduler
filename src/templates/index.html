@@ -48,7 +48,7 @@
                 <tbody>
                     {% for d in deploy %}
                     <tr>
-                        <td>{{ d.name }}{{ d.uid }}</td>
+                        <td>{{ d.name }}</td>
                         <td>{{ d.namespace }}</td>
 
                         <td>{{ d.replicas }}</td>
@@ -140,7 +140,7 @@
                     <div id="cronInfo" class="cron-helper"> </div>
                 </div>
                 <div class="actions">
-                    <button id="cancelBtn" class="btn cancel-btn">Annuler</button>
+                    <button id="deleteBtn" class="btn delete-btn">Supprimer</button> <!-- TODO faire le bouton supp (couleur) et faire la fonc js-->
                     <button id="saveBtn" class="btn save-btn">Enregistrer</button>
                 </div>
             </div>
