@@ -14,12 +14,12 @@ function toggleWorkloadDetails(button) {
     button.textContent = podDetails.classList.contains('collapsed') ? 'Show Details' : 'Hide Details';
 }
 
-function manageWorkloadStatus(type, name, namespace, action) {
+function manageWorkloadStatus(type, name, namespace, action, uid) {
     let url = ``;
     if (action === 'down') {
         url = `/shutdown/${type}/${namespace}/${name}`;
     } else if (action === 'up') {
-        url = `/up/${type}/${namespace}/${name}`;
+        url = `/up/${uid}`;
     } else if (action === 'down-all') {
         url = `/manage-all/down`;
     } else if (action === 'up-all') {
@@ -288,7 +288,7 @@ saveBtn.addEventListener('click', () => {
         });
     } else {
         console.log(`Création d'un nouveau schedule pour UID: ${currentUid}`);
-        fetch('/schedules', {
+        fetch('/schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

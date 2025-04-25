@@ -108,9 +108,9 @@
                         </td>   
                         <td>
                             <button
-                                onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                                onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down', '{{ d.uid }}')"
                                 class="btn btn-danger">Shutdown</button>
-                            <button onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
+                            <button onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up', '{{ d.uid }}')"
                                 class="btn btn-success">Scale Up</button>
                         </td>
                         <td>
