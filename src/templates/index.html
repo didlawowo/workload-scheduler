@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon.ico">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
 </head>
 
@@ -113,10 +114,10 @@
                                 class="btn btn-danger">Shutdown</button>
                             <button onclick="manageWorkloadStatus('deploy', 'up', '{{ d.uid }}')"
                                 class="btn btn-success">Start</button>
-                        </td>
-                        <td>
-                            <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')"
-                                class="btn btn-primary">Modifier</button>
+                       
+                                <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')" class="btn btn-primary">
+                                    <i class=" material-icons">edit</i>
+                                </button>
                         </td>
                     </tr>
                     {% endfor %}
