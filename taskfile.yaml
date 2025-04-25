@@ -40,19 +40,16 @@ tasks:
     cmds:
     - kubectl apply -f tests/deployment.yaml
 
-  init-db:
-    desc: initialize DataBase
-    cmds:
-    - python src/core/init_db.py
-
-  test-api:
-    desc: launch tests for api
-    cmds:
+  coverage-api:
+  desc: "Run API unit tests with code coverage"
+  cmds:
     - coverage run -m pytest src/tests/test_api.py
+    - coverage report -m
 
-  test-apî-coverage:
-    desc: show your coverage
-    cmds:
+coverage-integration:
+  desc: "Run integration tests with code coverage"
+  cmds:
+    - coverage run -m pytest src/tests/test_integration.py
     - coverage report -m
 
 default:

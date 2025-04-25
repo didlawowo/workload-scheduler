@@ -1,3 +1,5 @@
+import asyncio
+import platform
 from fastapi import FastAPI, Request
 from loguru import logger
 import os
@@ -5,17 +7,18 @@ from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import json
+from icecream import ic
 from pydantic import BaseModel
 from typing import List
 import sys
 import uvicorn
 import warnings
 from api.scheduler import scheduler
-from api.workload import workload
+from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
-from utils.config import apps_v1, core_v1, protected_namespaces
-from core.init_db import init_db
-
+from utils.config import protected_namespaces
+from utils.helpers import apps_v1, core_v1
+from core.dbManager import DatabaseManager
 
 os.environ["TZ"] = "Europe/Paris"
 log_level = os.getenv("LOG_LEVEL", "INFO")
@@ -61,12 +64,18 @@ logger.add(
 # Configuration du handler pour utiliser notre formateur
 logger = logger.patch(lambda record: record.update(message=formatter(record)))
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Configure FastAPI app
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_dir = os.path.join(BASE_DIR, "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 app.include_router(router=scheduler)
 app.include_router(router=workload)
+app.include_router(router=health_route)
+
+# Création d'une instance de DatabaseManager
+db = DatabaseManager()
 
 logger.info("Starting the application...")
 
@@ -93,8 +102,8 @@ if os.getenv("UNLEASH_API_URL"):
 version = "2.3.2"  #
 logger.info(f"Version: {version}")
 
-templates = Jinja2Templates(directory="templates")
-
+templates_dir = os.path.join(BASE_DIR, "templates")
+templates = Jinja2Templates(directory=templates_dir)
 
 class Workloads(BaseModel):
     workloads: List[str]
@@ -104,6 +113,34 @@ class Workloads(BaseModel):
 
 # Déterminer l'environnement (développement ou production)
 is_dev = os.environ.get("APP_ENV", "development").lower() == "development"
+
+async def init_database():
+    """Initialise la base de données et stocke les UIDs des workloads"""
+    logger.info("Initializing database...")
+
+    await db.create_table()
+    logger.success("Database created and tables initialized.")
+
+    deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
+    sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
+    ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
+
+    logger.success(
+        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)}"
+    )
+
+    for dep in deployment_list:
+        await db.store_uid(dep.get("uid"), dep.get('name'))
+    for sts in sts_list:
+        await db.store_uid(sts.get("uid"), sts.get('name'))
+    for ds in ds_list:
+        await db.store_uid(ds.get("uid"), ds.get('name'))
+    logger.success("UIDs stored in database.")
+
+@app.on_event("startup")
+async def startup_event():
+    """Événement exécuté au démarrage de l'application"""
+    await init_database()
 
 @app.get("/", response_class=HTMLResponse)
 def status(request: Request):
@@ -133,17 +170,31 @@ def status(request: Request):
 
 
 # Run the application
+async def main():
+    logger.info("Starting Workload Scheduler...")
+    logger.info("🚀 Application ready.")
+
 if __name__ == "__main__":
-    # Configurer Uvicorn avec notre système de logging
-    uvicorn_config = uvicorn.Config(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        reload=is_dev,
-        reload_dirs=["."]
-    )
+    if platform.system() == "Darwin":
+        ic.enable()
+    else:
+        ic.disable()
+    logger.info("🚀 Démarrage du script")
+    try:
+        asyncio.run(main())
+        logger.info("Starting Workload Scheduler...")
 
-    server = uvicorn.Server(uvicorn_config)
-    server.run()
+        uvicorn_config = uvicorn.Config(
+            app,
+            host="0.0.0.0",
+            port=8000,
+            reload=is_dev,
+            reload_dirs=["."]
+        )
 
-    logger.success("Started Workload Scheduler...")
+        server = uvicorn.Server(uvicorn_config)
+        server.run()
+
+        logger.success("Started Workload Scheduler...")
+    except KeyboardInterrupt:         
+        logger.info("👋 Arrêt demandé par l'utilisateur")
