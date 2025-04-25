@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from core.dbManager import DatabaseManager
 from core.models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
-from icecream import ic
 from typing import List, Optional
 from cron_validator import CronValidator
 from datetime import datetime
@@ -34,12 +33,11 @@ async def get_schedules() -> List[WorkloadSchedule]:
         Liste de toutes les programmations enregistrées
     """
     try:
-        logger.info("GET /schedules")
+        logger.debug("GET /schedules")
         schedules = await db_manager.get_all_schedules()
         return schedules
     except Exception as e:
         logger.error(f"Error in GET /schedules: {e}")
-       
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
