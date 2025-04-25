@@ -111,7 +111,7 @@
                                 onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down', '{{ d.uid }}')"
                                 class="btn btn-danger">Shutdown</button>
                             <button onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up', '{{ d.uid }}')"
-                                class="btn btn-success">Scale Up</button>
+                                class="btn btn-success">Start</button>
                         </td>
                         <td>
                             <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')"
@@ -216,7 +216,7 @@
                             <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.namespace }}', 'down')"
                                 class="btn btn-danger">Shutdown</button>
                             <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.namespace }}', 'up')"
-                                class="btn btn-success">Scale Up</button>
+                                class="btn btn-success">Start</button>
                         </td>
                     </tr>
                     {% endfor %}

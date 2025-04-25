@@ -17,9 +17,9 @@ function toggleWorkloadDetails(button) {
 function manageWorkloadStatus(type, name, namespace, action, uid) {
     let url = ``;
     if (action === 'down') {
-        url = `/shutdown/${type}/${namespace}/${name}`;
+        url = `/down/${type}/${uid}`;
     } else if (action === 'up') {
-        url = `/up/${uid}`;
+        url = `/up/${type}/${uid}`;
     } else if (action === 'down-all') {
         url = `/manage-all/down`;
     } else if (action === 'up-all') {

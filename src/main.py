@@ -199,7 +199,7 @@ if __name__ == "__main__":
         uvicorn_config = uvicorn.Config(
             app,
             host="0.0.0.0",
-            port=8001,
+            port=8000,
             reload=is_dev,
             reload_dirs=["."]
         )
