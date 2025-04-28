@@ -42,7 +42,7 @@ def sample_schedule_data(test_uid):
         "uid": test_uid,
         "name": "Test Schedule",
         "active": True,
-        "cron_start": "0 8 * * 1",
+        "cron_start": "0 8 * * 1-3",
         "cron_stop": "0 18 * * 1-3",
         "last_update": now.isoformat() + "Z"
     }
