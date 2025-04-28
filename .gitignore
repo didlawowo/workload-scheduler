@@ -4,3 +4,4 @@
 .coverage
 **/*.db
 .DS_Store
+coverage.xml
