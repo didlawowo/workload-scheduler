@@ -14,9 +14,10 @@ DATABASE_URL = "sqlite+aiosqlite:///data/schedule.db"
 
 
 class DatabaseManager:
-    def __init__(self):
+    def __init__(self, database_url: str = None):
         """🗄️ Initialise la connexion à la base de données"""
-        self.engine = create_async_engine(DATABASE_URL, echo=False)
+        self.database_url = database_url or DATABASE_URL
+        self.engine = create_async_engine(self.database_url, echo=False)
         self.async_session = async_sessionmaker(
             self.engine, class_=AsyncSession, expire_on_commit=False
         )
