@@ -173,6 +173,7 @@ def status(request: Request):
 # Run the application
 async def main():
     logger.info("🚀 Application starting.")
+    await init_database()
 
 if __name__ == "__main__":
     if platform.system() == "Darwin":

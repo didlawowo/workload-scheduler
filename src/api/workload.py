@@ -5,6 +5,7 @@ from typing import Any, Dict
 from utils.config import protected_namespaces
 from utils.helpers import core_v1, apps_v1
 from core.kub_list import list_all_deployments, list_all_sts
+from core.dbManager import DatabaseManager
 from pydantic import BaseModel
 from icecream import ic
 
@@ -218,25 +219,39 @@ def live():
     summary="Kubernetes health check",
     description="Returns the status of all sts in all namespaces."
 )
-def health():
+async def health():
     """
     Returns the status of all sts in all namespaces.
     """
+    health_status = {
+        "status": "success",
+        "database": {"status": "success"},
+        "kubernetes": {"status": "success"}
+    }
+    db_manager = DatabaseManager()
     try:
-        try:
-            data = core_v1.list_namespaced_pod(namespace="kube-system")
-            pod_list = []
-            for pod in data.items:
-                pod_list.append(
-                    {
-                        "name": pod.metadata.name,
-                        "status": pod.status.phase,
-                        "node": pod.spec.node_name,
-                    }
-                )
-            return {"status": "success", "data": pod_list}
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
-        return {"status": "success", "data": data}
+        tables_exist = await db_manager.check_table_exists()
+        health_status["database"]["details"] = "Tables présentes" if tables_exist else "Base accessible mais tables non trouvées"
+    except Exception as e:
+        health_status["database"]["status"] = "error"
+        health_status["database"]["message"] = str(e)
+        health_status["status"] = "error"
+    finally:
+       await db_manager.close()
+        
+    try:
+        data = core_v1.list_namespaced_pod(namespace="kube-system")
+        pod_list = []
+        for pod in data.items:
+            pod_list.append({
+                "name": pod.metadata.name,
+                "status": pod.status.phase,
+                "node": pod.spec.node_name,
+            })
+        health_status["kubernetes"]["details"] = pod_list
     except client.exceptions.ApiException as e:
-        return {"status": "error", "message": str(e)}
+        health_status["kubernetes"]["status"] = "error"
+        health_status["kubernetes"]["message"] = str(e)
+        health_status["status"] = "error"
+        
+    return health_status
