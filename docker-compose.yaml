@@ -37,7 +37,13 @@ services:
       # - ./:/app
       - sqlite-data:/app/data
     working_dir: /app
-
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 2s
+      retries: 3
+      start_period: 40s
+  
   # Visualiseur SQLite pour la base de données du scheduler
   sqlite-web:
     image: fizzbuzz2/sqlite-viewer:3.10
