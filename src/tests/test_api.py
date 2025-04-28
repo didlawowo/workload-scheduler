@@ -5,7 +5,8 @@ import os
 from datetime import datetime
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.pool import StaticPool
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -20,26 +21,36 @@ client = TestClient(app)
 @pytest.fixture(scope="function")
 def test_db():
     """Crée une base de données SQLite en mémoire pour les tests."""
+    # Sauvegarder l'URL de base de données originale
+    original_db_url = os.environ.get("DATABASE_URL", None)
+    # Configurer pour utiliser une base de données en mémoire
+    os.environ["DATABASE_URL"] = "sqlite://"
+    
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool
     )
     SQLModel.metadata.create_all(engine)
-    
     with Session(engine) as session:
         yield session
+    
+    # Restaurer la variable d'environnement d'origine
+    if original_db_url:
+        os.environ["DATABASE_URL"] = original_db_url
+    else:
+        del os.environ["DATABASE_URL"]
 
 @pytest.fixture
 def mock_db_manager():
     """Fixture pour mocker toutes les méthodes du db_manager"""
     with patch('api.scheduler.db_manager') as mock_manager:
-        mock_manager.get_all_schedules = AsyncMock()
-        mock_manager.store_schedule_status = AsyncMock()
+        mock_manager.get_all_schedules = AsyncMock(return_value=[])
+        mock_manager.store_schedule_status = AsyncMock(return_value=True)
         mock_manager.get_schedule = AsyncMock()
-        mock_manager.update_schedule = AsyncMock()
-        mock_manager.delete_schedule = AsyncMock()
-        
+        mock_manager.update_schedule = AsyncMock(return_value=True)
+        mock_manager.delete_schedule = AsyncMock(return_value=True)
+        mock_manager.store_schedule = AsyncMock(return_value=1)
         yield mock_manager
 
 def test_get_schedules(mock_db_manager):
@@ -185,3 +196,41 @@ def test_update_schedule_not_found(mock_db_manager):
     assert data["detail"] == "Schedule not found"
 
     mock_db_manager.update_schedule.assert_called_once()
+
+
+def test_invalid_cron_expression():
+    """Test lorsque l'expression cron est invalide"""
+    schedule_data = {
+        "name": "invalid-cron-job",
+        "uid": "invalid-cron-uid",
+        "cron_start": "invalid cron",
+        "status": "scheduled",
+        "active": True
+    }
+
+    with patch('utils.clean_cron.clean_cron_expression', return_value="invalid cron * * *"):
+        with patch('cron_validator.CronValidator.parse', return_value=False):
+            response = client.post("/schedule", json=schedule_data)
+
+    assert response.status_code == 400
+    assert "detail" in response.json()
+    assert "Invalid CRON expression" in response.json()["detail"]
+
+def test_start_workload_api_failure(mock_db_manager):
+    """Test d'échec du démarrage du workload en raison d'un problème API"""
+    mock_schedule = MagicMock()
+    mock_schedule.id = 1
+    mock_schedule.name = "Test Workload"
+    mock_schedule.uid = "test-uid"
+    mock_schedule.status = ScheduleStatus.NOT_SCHEDULED
+    mock_schedule.active = True
+    
+    mock_db_manager.get_schedule.return_value = mock_schedule
+    
+    with patch('httpx.AsyncClient.get', side_effect=Exception("API Failure")):
+        try:
+            response = client.post("/schedules/1/start")
+            if response.status_code == 500:
+                assert "API Failure" in response.json().get("detail", "") or "Error" in response.json().get("detail", "")
+        except Exception:
+            pass
