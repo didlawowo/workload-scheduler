@@ -18,6 +18,7 @@ from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
 from utils.config import protected_namespaces
 from utils.helpers import apps_v1, core_v1
+from scheduler_engine import SchedulerEngine
 from core.dbManager import DatabaseManager
 
 os.environ["TZ"] = "Europe/Paris"
@@ -49,20 +50,20 @@ def formatter(record):
 
 
 # Suppression des handlers existants pour éviter tout conflit
-logger.remove()
+# logger.remove()
 
-# Ajout du nouveau handler avec le formateur personnalisé
-# Notez l'utilisation de format="{message}" qui laisse notre formateur gérer la structure complète
-logger.add(
-    sys.stdout,
-    format="{message}",  # Format minimal
-    serialize=False,  # Désactivation de la sérialisation automatique
-    colorize=False,  # Désactivation de la coloration pour éviter les caractères d'échappement
-    catch=True,  # Capture les erreurs de logging
-)
+# # Ajout du nouveau handler avec le formateur personnalisé
+# # Notez l'utilisation de format="{message}" qui laisse notre formateur gérer la structure complète
+# logger.add(
+#     sys.stdout,
+#     format="{message}",  # Format minimal
+#     serialize=False,  # Désactivation de la sérialisation automatique
+#     colorize=False,  # Désactivation de la coloration pour éviter les caractères d'échappement
+#     catch=True,  # Capture les erreurs de logging
+# )
 
 # Configuration du handler pour utiliser notre formateur
-logger = logger.patch(lambda record: record.update(message=formatter(record)))
+# logger = logger.patch(lambda record: record.update(message=formatter(record)))
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -76,6 +77,9 @@ app.include_router(router=health_route)
 
 # Création d'une instance de DatabaseManager
 db = DatabaseManager()
+
+# Initialiser le scheduler avec un intervalle personnalisé (en secondes)
+scheduler_engine = SchedulerEngine(check_interval=60)
 
 logger.info("Starting the application...")
 
@@ -137,10 +141,7 @@ async def init_database():
         await db.store_uid(ds.get("uid"), ds.get('name'))
     logger.success("UIDs stored in database.")
 
-@app.on_event("startup")
-async def startup_event():
-    """Événement exécuté au démarrage de l'application"""
-    await init_database()
+ 
 
 @app.get("/", response_class=HTMLResponse)
 def status(request: Request):
@@ -171,8 +172,7 @@ def status(request: Request):
 
 # Run the application
 async def main():
-    logger.info("Starting Workload Scheduler...")
-    logger.info("🚀 Application ready.")
+    logger.info("🚀 Application starting.")
 
 if __name__ == "__main__":
     if platform.system() == "Darwin":
@@ -196,5 +196,5 @@ if __name__ == "__main__":
         server.run()
 
         logger.success("Started Workload Scheduler...")
-    except KeyboardInterrupt:         
+    except KeyboardInterrupt:
         logger.info("👋 Arrêt demandé par l'utilisateur")

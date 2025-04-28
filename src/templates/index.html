@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
 <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon.ico">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
 </head>
 
@@ -51,10 +52,8 @@
                         <td>{{ d.name }}{{ d.uid }}</td>
                         <td>{{ d.namespace }}</td>
 
-                        <td>{{ d.replicas }}</td>
-                        <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
-                            {{ d.available_replicas }}
-                        </td>
+                        <td {% if d.replicas is none %}>0{% else %}>{{ d.replicas }}{% endif %}</td>
+                        <td {% if d.available_replicas is none %}class="btn-danger">0{% else %}>{{ d.available_replicas }}{% endif %}</td>
                         <!-- <td>
                             {% if d.labels %}
                             <ul style="list-style-type: none; padding: 0; margin: 0;">
@@ -77,8 +76,11 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show
-                                        Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details
+                                        {% if not pod.resource_requests or not pod.resource_limits %}
+                                          <span style="color: orange; margin-left: 5px;">⚠️</span>
+                                        {% endif %}
+                                    </button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -108,10 +110,14 @@
                         </td>   
                         <td>
                             <button
-                                onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'down')"
+                                onclick="manageWorkloadStatus('deploy', 'down', '{{ d.uid }}')"
                                 class="btn btn-danger">Shutdown</button>
-                            <button onclick="manageWorkloadStatus('deploy', '{{ d.name }}', '{{ d.namespace }}', 'up')"
-                                class="btn btn-success">Scale Up</button>
+                            <button onclick="manageWorkloadStatus('deploy', 'up', '{{ d.uid }}')"
+                                class="btn btn-success">Start</button>
+                       
+                                <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')" class="btn btn-primary">
+                                    <i class=" material-icons">edit</i>
+                                </button>
                         </td>
                         <td>
                             <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')"
@@ -140,7 +146,7 @@
                     <div id="cronInfo" class="cron-helper"> </div>
                 </div>
                 <div class="actions">
-                    <button id="cancelBtn" class="btn cancel-btn">Annuler</button>
+                    <button id="deleteBtn" class="btn delete-btn">Supprimer</button> <!-- TODO faire le bouton supp (couleur) et faire la fonc js-->
                     <button id="saveBtn" class="btn save-btn">Enregistrer</button>
                 </div>
             </div>
@@ -167,10 +173,8 @@
                         <td>{{ d.name }}</td>
                         <td>{{ d.namespace }}</td>
 
-                        <td>{{ d.replicas }}</td>
-                        <td {% if d.available_replicas is none %}class="btn-danger" {% endif %}>
-                            {{ d.available_replicas }}
-                        </td>
+                        <td {% if d.replicas is none %}>0{% else %}>{{ d.replicas }}{% endif %}</td>
+                        <td {% if d.available_replicas is none %}class="btn-danger">0{% else %}>{{ d.available_replicas }}{% endif %}</td>
 
                         <td>
                             {% for pod in d.pods %}
@@ -183,8 +187,11 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show
-                                        Details</button>
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details
+                                        {% if not pod.resource_requests or not pod.resource_limits %}
+                                          <span style="color: orange; margin-left: 5px; font-weight: bold;">(!)</span>
+                                        {% endif %}
+                                      </button>
                                 </div>
                                 <div class="detailed-info">
                                     <strong>Node:</strong> {{ pod.node }}<br>
@@ -216,7 +223,7 @@
                             <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.namespace }}', 'down')"
                                 class="btn btn-danger">Shutdown</button>
                             <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.namespace }}', 'up')"
-                                class="btn btn-success">Scale Up</button>
+                                class="btn btn-success">Start</button>
                         </td>
                     </tr>
                     {% endfor %}

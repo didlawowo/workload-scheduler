@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from core.dbManager import DatabaseManager
 from core.models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
-from icecream import ic
 from typing import List, Optional
 from cron_validator import CronValidator
 from datetime import datetime
@@ -34,12 +33,11 @@ async def get_schedules() -> List[WorkloadSchedule]:
         Liste de toutes les programmations enregistrées
     """
     try:
-        logger.info("GET /schedules")
+        logger.debug("GET /schedules")
         schedules = await db_manager.get_all_schedules()
         return schedules
     except Exception as e:
         logger.error(f"Error in GET /schedules: {e}")
-        ic(e)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
@@ -59,7 +57,7 @@ async def get_schedule_by_uid(uid: str) -> Optional[WorkloadSchedule]:
         La programmation correspondante ou None si non trouvée
     """
     try:
-        logger.info(f"GET /schedule/{uid}")
+        logger.debug(f"GET /schedule/{uid}")
         schedule = await db_manager.get_schedule(uid)
 
         if not schedule:
@@ -74,7 +72,7 @@ async def get_schedule_by_uid(uid: str) -> Optional[WorkloadSchedule]:
 
 
 @scheduler.post(
-    "/schedules",
+    "/schedule",
     response_model=ScheduleResponse,
     summary="Create a new schedule",
     description="Schedule a new workload operation"
@@ -162,7 +160,7 @@ async def update_schedule_route(
 
         success = await db_manager.update_schedule(schedule_id, updated_schedule)
         if not success:
-            raise HTTPException(status_code=404, detail="Schedule not found")
+            raise HTTPException(status_code=404, detail="Schedule not found") # TODO faire un log
         return {"status": "updated"}
     except ValueError as ve:
         logger.error(f"Validation error: {ve}")

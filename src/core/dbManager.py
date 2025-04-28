@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlmodel import select, text
 from .models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
-from icecream import ic
+from icecream import ic  # noqa: F401
 from cron_validator import CronValidator
 from typing import Dict, Any
 
@@ -84,7 +84,7 @@ class DatabaseManager:
 
         async with self.async_session() as session:
             try:
-                ic(schedule)
+                # ic(schedule)
                 if isinstance(schedule.get("last_update"), str):
                     try:
                         schedule["last_update"] = datetime.fromisoformat(schedule["last_update"].replace("Z", "+00:00"))
@@ -117,7 +117,7 @@ class DatabaseManager:
                 return schedules
             except Exception as e:
                 logger.error(f"Error fetching schedules: {e}")
-                ic(e)
+
                 raise e
 
     async def get_schedule(self, uid: str):
@@ -144,7 +144,7 @@ class DatabaseManager:
         async with self.async_session() as session:
             schedule = await session.get(WorkloadSchedule, schedule_id)
             if not schedule:
-                logger.error(f"Schedule with ID {schedule_id} not found")
+                logger.error(f"Schedule with ID {schedule_id} not found") # TODO Gérer l'erreur coté front
                 return False
 
             schedule_data = updated_schedule.model_dump(exclude={"id"})

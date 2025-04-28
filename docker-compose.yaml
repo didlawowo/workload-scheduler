@@ -1,7 +1,7 @@
 services:
-  workload-scheduler:
+  workload-controller:
     image: python:3.9-slim
-    container_name: workload-scheduler
+    container_name: workload-controller
     command: "python src/main.py"
     ports:
       - "8000:8000"
@@ -10,7 +10,31 @@ services:
       - PYTHONPATH=/app
     restart: unless-stopped
     volumes:
-      - ./:/app
+      # - ./:/app
+      - sqlite-data:/app/data
+    working_dir: /app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  workload-scheduler:
+    image: python:3.9-slim
+    container_name: workload-scheduler
+    depends_on:
+      - workload-controller
+    command: "python src/scheduler_engine.py"
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=Europe/Paris
+      - PYTHONPATH=/app
+    restart: unless-stopped
+    volumes:
+      # - ./:/app
       - sqlite-data:/app/data
     working_dir: /app
     healthcheck:

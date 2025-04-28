@@ -23,10 +23,10 @@ tasks:
     desc: Run the app localy
     dir: src
     cmds:
-    - pipenv run python main.py
+    - pipenv run python main.py && pipenv run python scheduler_engine.py
 
   shell:
-    desc: Open a shell in the running container
+    desc: Open a shell from virtual env
     cmds:
     - pipenv shell
 
@@ -38,19 +38,30 @@ tasks:
   apply-deployment:
     desc: apply a deployment kubernetes
     cmds:
-    - kubectl apply -f tests/deployment.yaml
+    - kubectl apply -f src/tests/deployment.yaml
+
+  test-api:
+    desc: run API unit tests
+    cmds:
+    - pytest src/tests/test_api.py -v
+
+  test-integration:
+    desc: run integration tests
+    cmds:
+    - pytest src/tests/test_integration.py -v
 
   coverage-api:
-  desc: "Run API unit tests with code coverage"
-  cmds:
+    desc: run API unit tests with code coverage
+    cmds:
     - coverage run -m pytest src/tests/test_api.py
     - coverage report -m
 
-coverage-integration:
-  desc: "Run integration tests with code coverage"
-  cmds:
+  coverage-integration:
+    desc: run integration tests with code coverage
+    cmds:
     - coverage run -m pytest src/tests/test_integration.py
     - coverage report -m
+  # TODO add lib dep requirements.txt
 
 default:
   desc: List available tasks

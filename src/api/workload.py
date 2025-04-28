@@ -2,10 +2,11 @@ from fastapi import APIRouter
 from kubernetes import client
 from loguru import logger
 from typing import Any, Dict
-from utils.config import protected_namespaces, shutdown_label_selector
+from utils.config import protected_namespaces
 from utils.helpers import core_v1, apps_v1
 from core.kub_list import list_all_deployments, list_all_sts
 from pydantic import BaseModel
+from icecream import ic
 
 class PodStatus(BaseModel):
     name: str
@@ -47,12 +48,12 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
                     f"Scaling down deploy '{deploy['name']}' in namespace '{deploy['namespace']}'"
                 )
 
-                await shutdown_app("deploy", deploy["namespace"], deploy["name"])
+                await manage_status("down", "deploy", deploy['uid'])
             elif mode == "up":
                 logger.info(
                     f"Scaling up deploy '{deploy['name']}' in namespace '{deploy['namespace']}'"
                 )
-                await scale_up_app("deploy", deploy["namespace"], deploy["name"])
+                await manage_status("up", "deploy", deploy['uid'])
 
         for sts in sts_list:
             if mode == "down":
@@ -60,12 +61,12 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
                     f"Scaling down StatefulSet '{sts['name']}' in namespace '{sts['namespace']}'"
                 )
 
-                await shutdown_app("sts", sts["namespace"], sts["name"])
+                await manage_status("down", "sts", deploy['uid'])
             elif mode == "up":
                 logger.info(
                     f"Scaling up StatefulSet '{sts['name']}' in namespace '{sts['namespace']}'"
                 )
-                await scale_up_app("sts", sts["namespace"], sts["name"])
+                await manage_status("up", "sts", deploy['uid'])
         # For simplicity, this example responds with a success message regardless of individual failures
         return {
             "message": "Bulk action to scale down deployments initiated. Check logs for individual action results."
@@ -73,131 +74,77 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error while scaling down all workload Error: {e}")
 
-
 @workload.get(
-    "/shutdown/{resource_type}/{namespace}/{name}",
+    "/manage/{action}/{resource_type}/{uid}",
     response_model=WorkloadResponse,
-    summary="Shutdown a specific resource",
-    description="Scale down a specific deployment or statefulset to 0 replicas"
+    summary="Manage status a specific resource",
+    description="Manage deployment, statefulset, or daemonset status"
 )
-async def shutdown_app(resource_type: str, namespace: str, name: str) -> Dict[str, Any]:
+async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, Any]:
     """
-    shutdown the specified Deployment, considering protected namespaces and labels.
+    scale up or shutdown the specified Deployment, considering protected namespaces and labels.
     """
+    logger.info(f"Manage {uid}'")
 
-    # Check if the namespace is protected
-    if namespace in protected_namespaces:
-        return {
-            "status": "error",
-            "message": f"Namespace '{namespace}' is protected and cannot be modified.",
+    try:
+        action_nbr = 0
+        if resource_type == "deploy":
+            c = apps_v1.list_deployment_for_all_namespaces()
+            if action == "up":
+                action_nbr = 1
+            for deploy in c.items :
+                if deploy.metadata.uid == uid:
+                    ic(deploy.metadata.uid)
+                    body = {"spec": {"replicas": action_nbr}}
+                    apps_v1.patch_namespaced_deployment_scale(
+                        name=deploy.metadata.name, namespace=deploy.metadata.namespace, body=body
+                    )
+                    logger.success(f"Scaled {[action]} deplyment")
+                    return {
+            "status": "success",
+            "message": f"deployment '{deploy.metadata.name}' in namespace '{deploy.metadata.namespace}' has been scaled '{action}'",
         }
-    # logger.info(f"Shutdown Deployment '{name}' in namespace '{namespace}'")
-    # Fetch the Deployment to check its labels
-    if resource_type == "deploy":
-        try:
-            d = apps_v1.read_namespaced_deployment(name, namespace)
-            # application_name = d.metadata.labels["argocd.argoproj.io/instance"]
+        
+        elif resource_type == "sts":
+            c = apps_v1.list_stateful_set_for_all_namespaces()
+            if action == "up":
+                action_nbr = 1
+            for stateful_set in c.items :
+                if stateful_set.metadata.uid == uid:
+                    ic(stateful_set.metadata.uid)
+                    body = {"spec": {"replicas": action_nbr}}
+                    apps_v1.patch_namespaced_stateful_set_scale(
+                        name=stateful_set.metadata.name, namespace=stateful_set.metadata.namespace, body=body
+                    )
+                    logger.success(f"Scaled {[action]} sts")
+                    return {
+            "status": "success",
+            "message": f"deployment '{stateful_set.metadata.name}' in namespace '{stateful_set.metadata.namespace}' has been scaled '{action}'",
+        }
 
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
-
-        # Check if the Deployment has the shutdown protection label
-        if shutdown_label_selector in d.metadata.labels:
-            return {
-                "status": "error",
-                "message": f"Deployment '{name}' in namespace '{namespace}' is protected  ",
-            }
-    elif resource_type == "sts":
-        try:
-            sts = apps_v1.read_namespaced_stateful_set(name, namespace)
-            # application_name = sts.metadata.labels["argocd.argoproj.io/instance"]
-
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
-
-        # Check if the Deployment has the shutdown protection label
-        if shutdown_label_selector in sts.metadata.labels:
-            return {
-                "status": "error",
-                "message": f"StatefulSet '{name}' in namespace '{namespace}' is protected  ",
-            }
-
-    # logger.debug(c.metadata.labels)
-    # patch the resources
-    try:
-        # Step 1: Disable auto-sync
-        if resource_type != "ds":
-            # logger.info(f"Disabling auto-sync... for application '{application_name}'")
-            # patch_argocd_application(
-            #     token=argo_session_token,
-            #     app_name=application_name,
-            #     enable_auto_sync=False,
-            # )
-            # logger.success(
-            #     f"Auto-sync disabled for application '{application_name}'. Proceeding with scaling down the Deployment."
-            # )
-            # Define the patch to scale the Deployment
-
-            body = {"spec": {"replicas": 0}}
-
-            if resource_type == "deploy":
-                apps_v1.patch_namespaced_deployment_scale(
-                    name=name, namespace=namespace, body=body
-                )
-            elif resource_type == "sts":
-                apps_v1.patch_namespaced_stateful_set_scale(
-                    name=name, namespace=namespace, body=body
-                )
-
-            logger.info(
-                f"{resource_type} '{name}' in namespace '{namespace}' has been shutdown  "
-            )
-            return {
-                "status": "success",
-                "message": f"{resource_type} '{name}' in namespace '{namespace}' has been shutdown.",
-            }
-
-    except client.exceptions.ApiException as e:
-        logger.error(e)
-        return {"status": "error", "message": str(e)}
-
-
-@workload.get(
-    "/up/{resource_type}/{namespace}/{name}",
-    response_model=WorkloadResponse,
-    summary="Scale up a specific resource",
-    description="Scale up a deployment, statefulset, or daemonset"
-)
-async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[str, Any]:
-    """
-    scale up the specified Deployment, considering protected namespaces and labels.
-    """
-    logger.info(f"Scaling up {resource_type} '{name}' in namespace '{namespace}'")
-
-    if resource_type == "deploy":
-        try:
-            c = apps_v1.read_namespaced_deployment(name, namespace)
-            logger.success("scaled up deployment")
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
-
-    elif resource_type == "sts":
-        try:
-            c = apps_v1.read_namespaced_stateful_set(name, namespace)
-            logger.success("scaled up sts")
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
-
-    elif resource_type == "ds":
-        try:
-            c = apps_v1.read_namespaced_daemon_set(name=name, namespace=namespace)
-            logger.success("scaled up ds")
-
-        except client.exceptions.ApiException as e:
-            return {"status": "error", "message": str(e)}
-
-    # restore auto-sync
-    try:
+        elif resource_type == "ds":
+            c = apps_v1.list_daemon_set_for_all_namespaces()
+            if action == "up":
+                action_nbr = 1
+            for daemonset in c.items :
+                if daemonset.metadata.uid == uid:
+                    ic(daemonset.metadata.uid)
+                    body = {"spec": {"replicas": action_nbr}}
+                    apps_v1.patch_namespaced_daemon_set(
+                        name=daemonset.metadata.name, namespace=daemonset.metadata.namespace, body=body
+                    )
+                    logger.success(f"Scaled {[action]} daemonset")
+            
+                    return {
+            "status": "success",
+            "message": f"deployment '{daemonset.metadata.name}' in namespace '{daemonset.metadata.namespace}' has been scaled '{action}'",
+        }
+        else:
+            logger.error(f"Unknown resource type: {resource_type}")
+            return {"status": "error", "message": f"Unknown resource type: {resource_type}"}
+     
+        # TODO restore auto-sync
+  
         # application_name = c.metadata.labels["argocd.argoproj.io/instance"]
         # Step 1: enable auto-sync
         # logger.info(f"Enabling auto-sync for application '{application_name}'")
@@ -209,29 +156,9 @@ async def scale_up_app(resource_type: str, namespace: str, name: str) -> Dict[st
         # logger.success(
         #     f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
         # )
-        # Define the patch to scale the Deployment
-        body = {"spec": {"replicas": 1}}
-        if resource_type == "deploy":
-            apps_v1.patch_namespaced_deployment_scale(
-                name=name, namespace=namespace, body=body
-            )
-        elif resource_type == "sts":
-            # Define the patch to scale the Sts
+      
+   
 
-            apps_v1.patch_namespaced_stateful_set_scale(
-                name=name, namespace=namespace, body=body
-            )
-        elif resource_type == "ds":
-            logger.info("scaling up ds")
-            body_ds = {"spec": {"template": {"spec": {"nodeSelector": None}}}}
-            apps_v1.patch_namespaced_daemon_set(
-                name=name, namespace=namespace, body=body_ds
-            )
-            # logger.debug(res)
-        return {
-            "status": "success",
-            "message": f"{resource_type} '{name}' in namespace '{namespace}' has been scaled up",
-        }
     except client.exceptions.ApiException as e:
         logger.error(e)
         return {"status": "error", "message": str(e)}
