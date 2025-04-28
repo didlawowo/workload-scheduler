@@ -110,9 +110,9 @@
                         </td>   
                         <td>
                             <button
-                                onclick="manageWorkloadStatus('deploy', 'down', '{{ d.uid }}')"
+                                onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'down')"
                                 class="btn btn-danger">Shutdown</button>
-                            <button onclick="manageWorkloadStatus('deploy', 'up', '{{ d.uid }}')"
+                            <button onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'up')"
                                 class="btn btn-success">Start</button>
                        
                                 <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')" class="btn btn-primary">

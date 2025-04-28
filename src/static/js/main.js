@@ -16,7 +16,7 @@ function toggleWorkloadDetails(button) {
     button.textContent = podDetails.classList.contains('collapsed') ? 'Show Details' : 'Hide Details';
 }
 
-function manageWorkloadStatus(type, action, uid) {
+function manageWorkloadStatus(type, name, uid, action) {
     let url = ``;
     if (action === 'down') {
         url = `/manage/down/${type}/${uid}`;
@@ -27,18 +27,42 @@ function manageWorkloadStatus(type, action, uid) {
     } else if (action === 'up-all') {
         url = `/manage-all/up`;
     }
+    
+    console.log(`URL: ${url}`);
+    
     fetch(url, { method: 'GET' })
         .then(response => {
+            console.log(`Réponse reçue, status: ${response.status}`);
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return response.json();
+            
+            const contentType = response.headers.get('content-type');
+            console.log(`Type de contenu: ${contentType}`);
+            
+            if (contentType && contentType.includes('application/json')) {
+                return response.json().then(data => {
+                    return { isJson: true, data: data };
+                });
+            } else {
+                return response.text().then(text => {
+                    console.log("Réponse texte:", text);
+                    return { isJson: false, data: { status: 'success', message: text || 'Opération effectuée' } };
+                });
+            }
         })
-        .then(data => {
-            window.location.reload();
+        .then(result => {
+            console.log("Traitement de la réponse:", result);
+            
+            console.log("Attente avant rechargement...");
+            setTimeout(() => {
+                console.log("Rechargement de la page...");
+                window.location.reload();
+            }, 1000);
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Erreur:', error);
             alert(`Une erreur est survenue: ${error.message}`);
         });
 }
@@ -57,12 +81,6 @@ function closeModal() {
 
 closeBtn.addEventListener('click', closeModal);
 // cancelBtn.addEventListener('click', closeModal);
-
-window.addEventListener('click', (event) => {
-    if (event.target === modal) {
-        closeModal();
-    }
-});
 
 /* crontab management */
 let defaultCronValue = "*/5 * * * *";
