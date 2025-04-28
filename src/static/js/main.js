@@ -5,6 +5,8 @@ const saveBtn = document.getElementById('saveBtn');
 const cronStart = document.getElementById('cronExpressionStart');
 const cronStop = document.getElementById('cronExpressionStop');
 const cronError = document.getElementById('cronError');
+const deleteBtn = document.getElementById('deleteBtn');
+
 
 /* main */
 
@@ -47,9 +49,12 @@ function manageWorkloadStatus(type, action, uid) {
 function closeModal() {
     modal.style.display = 'none';
     saveBtn.dataset.mode = 'create';
+    document.querySelector('.modal-content').dataset.mode = 'create';
     document.querySelector('.modal-content h3').textContent = 'Éditeur d\'expression Cron';
+    deleteBtn.style.display = 'none';
     currentScheduleId = null;
 }
+
 closeBtn.addEventListener('click', closeModal);
 // cancelBtn.addEventListener('click', closeModal);
 
@@ -135,6 +140,8 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
     
     console.log(`Récupération des données pour l'UID: ${uid}`);
     
+    deleteBtn.style.display = 'none';
+    
     fetch(`/schedule/${uid}`, {
         method: 'GET',
         headers: {
@@ -155,10 +162,14 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
         console.log("Schedule data:", data);
         
         if (data && data.id) {
-            console.log(`Schedule existant trouvé avec ID: ${data.id}`);
+            console.log(`Schedule existant trouvé pour l'UID: ${uid}, ID: ${data.id}`);
             cronStart.value = data.cron_start ? cleanCronExpression(data.cron_start) : defaultCronValue;
             cronStop.value = data.cron_stop ? cleanCronExpression(data.cron_stop) : defaultCronValue;
             currentScheduleId = data.id;
+            
+            const hasCronExpressions =
+                data.cron_start !== "* * * * *" ||
+                data.cron_stop !== "* * * * *";
             
             if (data.name) {
                 let currentWorkloadNameField = document.getElementById('currentWorkloadName');
@@ -173,7 +184,10 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             }
             
             saveBtn.dataset.mode = 'update';
+            document.querySelector('.modal-content').dataset.mode = 'update';
             document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';
+            
+            deleteBtn.style.display = hasCronExpressions ? 'inline-block' : 'none';
             
             currentStatus = data.status;
             
@@ -185,14 +199,18 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             console.log(`Création d'un nouveau schedule pour l'UID: ${uid}`);
             currentScheduleId = null;
             saveBtn.dataset.mode = 'create';
+            document.querySelector('.modal-content').dataset.mode = 'create';
             document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
             currentStatus = "not scheduled";
+            
+            deleteBtn.style.display = 'none';
         }
         
         console.log("Workload info:", {
             action: currentAction,
             name: currentName,
             direction: currentDirection,
+            uid: currentUid,
             scheduleId: currentScheduleId,
             mode: saveBtn.dataset.mode,
             status: currentStatus
@@ -202,8 +220,11 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
         console.error('Erreur lors de la vérification des programmations:', error);
         currentScheduleId = null;
         saveBtn.dataset.mode = 'create';
+        document.querySelector('.modal-content').dataset.mode = 'create';
         document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
         currentStatus = "not scheduled";
+        
+        deleteBtn.style.display = 'none';
     })
     .finally(() => {
         modal.style.display = 'block';
@@ -388,6 +409,34 @@ function deleteSchedule(scheduleId) {
         });
     }
 }
+
+deleteBtn.addEventListener('click', () => {
+    if (!currentUid) {
+        closeModal();
+        return;
+    }
+    
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette programmation Cron ?')) {
+        fetch(`/schedule/${currentUid}/remove-crons`, {
+            method: 'PUT'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Expressions Cron supprimées:', data);
+            getListSchedule();
+            closeModal();
+        })
+        .catch(error => {
+            console.error('Erreur lors de la suppression des expressions Cron:', error);
+            alert(`Erreur lors de la suppression des expressions Cron: ${error.message}`);
+        });
+    }
+});
 
 // Fonction pour éditer un workload existant depuis le tableau
 // function editWorkload(scheduleId, cronValue) {
