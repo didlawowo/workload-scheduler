@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Path, Body, Response
+from fastapi import APIRouter, HTTPException, Path, Body
 from loguru import logger
 from pydantic import BaseModel
 from core.dbManager import DatabaseManager
@@ -62,7 +62,8 @@ async def get_schedule_by_uid(uid: str) -> Optional[WorkloadSchedule]:
 
         if not schedule:
             logger.info(f"Aucun schedule trouvé pour l'UID: {uid}")
-            return Response(status_code=404)
+            raise HTTPException(status_code=404, detail="Schedule not found")
+
 
         logger.info(f"Schedule trouvé pour l'UID: {uid}, ID: {schedule.id}")
         return schedule
@@ -108,7 +109,7 @@ async def create_schedule(
                 raise ValueError(f"Invalid CRON expression in cron_stop: {data['cron_stop']}")
 
         await db_manager.store_schedule_status(data)
-        logger.success("POST /schedules - Created schedule")
+        logger.success("POST /schedule - Created schedule")
         return {"status": "created", "detail": "Schedule created successfully"}
     except ValueError as ve:
         logger.error(f"Validation error: {ve}")
@@ -160,7 +161,9 @@ async def update_schedule_route(
 
         success = await db_manager.update_schedule(schedule_id, updated_schedule)
         if not success:
-            raise HTTPException(status_code=404, detail="Schedule not found") # TODO faire un log
+            logger.warning(f"Schedule with ID {schedule_id} not found")
+            raise HTTPException(status_code=404, detail="Schedule not found")
+
         return {"status": "updated"}
     except ValueError as ve:
         logger.error(f"Validation error: {ve}")

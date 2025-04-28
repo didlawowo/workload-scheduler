@@ -87,7 +87,7 @@ def test_create_schedule_success(mock_db_manager):
     
     with patch('utils.clean_cron.clean_cron_expression', return_value="*/5 * * * *"):
         with patch('cron_validator.CronValidator.parse', return_value=True):
-            response = client.post("/schedules", json=schedule_data)
+            response = client.post("/schedule", json=schedule_data)
     
     assert response.status_code == 200
     data = response.json()
@@ -109,7 +109,7 @@ def test_create_schedule_failure(mock_db_manager):
     
     with patch('utils.clean_cron.clean_cron_expression', return_value="invalid cron"):
         with patch('cron_validator.CronValidator.parse', return_value=False):
-            response = client.post("/schedules", json=schedule_data)
+            response = client.post("/schedule", json=schedule_data)
     
     assert response.status_code == 400
     assert "detail" in response.json()
