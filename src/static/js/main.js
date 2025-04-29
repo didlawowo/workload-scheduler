@@ -30,6 +30,9 @@ function manageWorkloadStatus(type, name, uid, action) {
     
     console.log(`URL: ${url}`);
     
+    // Afficher un indicateur de chargement
+    document.getElementById('progressBar').style.width = '50%';
+    
     fetch(url, { method: 'GET' })
         .then(response => {
             console.log(`Réponse reçue, status: ${response.status}`);
@@ -37,6 +40,9 @@ function manageWorkloadStatus(type, name, uid, action) {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
+            
+            // Mettre à jour la barre de progression
+            document.getElementById('progressBar').style.width = '75%';
             
             const contentType = response.headers.get('content-type');
             console.log(`Type de contenu: ${contentType}`);
@@ -48,12 +54,22 @@ function manageWorkloadStatus(type, name, uid, action) {
             } else {
                 return response.text().then(text => {
                     console.log("Réponse texte:", text);
-                    return { isJson: false, data: { status: 'success', message: text || 'Opération effectuée' } };
+                    try {
+                        // Tenter de parser le texte comme JSON
+                        const jsonData = JSON.parse(text);
+                        return { isJson: true, data: jsonData };
+                    } catch (e) {
+                        // Si ce n'est pas du JSON, retourner comme texte
+                        return { isJson: false, data: { status: 'success', message: text || 'Opération effectuée' } };
+                    }
                 });
             }
         })
         .then(result => {
             console.log("Traitement de la réponse:", result);
+            
+            // Terminer la barre de progression
+            document.getElementById('progressBar').style.width = '100%';
             
             console.log("Attente avant rechargement...");
             setTimeout(() => {
@@ -63,7 +79,15 @@ function manageWorkloadStatus(type, name, uid, action) {
         })
         .catch(error => {
             console.error('Erreur:', error);
+            // Réinitialiser la barre de progression en cas d'erreur
+            document.getElementById('progressBar').style.width = '0%';
             alert(`Une erreur est survenue: ${error.message}`);
+        })
+        .finally(() => {
+            // S'assurer que la barre de progression disparaît après un délai
+            setTimeout(() => {
+                document.getElementById('progressBar').style.width = '0%';
+            }, 2000);
         });
 }
 

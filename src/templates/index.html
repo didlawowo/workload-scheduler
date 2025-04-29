@@ -14,21 +14,21 @@
 
 <body>
     <div class="container">
-        <div style="display: flex; justify-content: center; align-items: center;">
-            <h1 style="margin-right: 20px;">Kubernetes Workloads Manager</h1>
-            <img src="/static/image.png" alt="Kubernetes Logo" style="height: 50px;">
-        </div>
+        <div style="position: relative;">
+            <div style="display: flex; justify-content: center; align-items: center;">
+                <h1 style="margin-right: 20px;">Kubernetes Workloads Manager</h1>
+                <img src="/static/image.png" alt="Kubernetes Logo" style="height: 50px;">
+            </div>
+            <div class="actions" id="globalActions" style="position: absolute; top: 0; right: 0;">
+                <button onclick="manageWorkloadStatus('','','','down-all')" class="btn btn-danger">Shutdown All</button>
+                <button onclick="manageWorkloadStatus('','','','up-all')" class="btn btn-success">Scale Up All</button>
+            </div>
         <p
             style="position: absolute; top: 20px;   margin: 20px auto; text-align: center; background-color: #3182ce; color: white; padding: 5px ; border-radius: 2px;">
             {{ version }}</p>
 
         <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>
-        </div>
-
-        <div class="actions" id="globalActions">
-            <button onclick="manageWorkloadStatus('','','','down-all')" class="btn btn-danger">Shutdown All</button>
-            <button onclick="manageWorkloadStatus('','','','up-all')" class="btn btn-success">Scale Up All</button>
         </div>
 
         <div class="section" id="deployment">
