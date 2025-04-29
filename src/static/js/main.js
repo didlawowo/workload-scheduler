@@ -13,24 +13,7 @@ const deleteBtn = document.getElementById('deleteBtn');
 function toggleWorkloadDetails(button) {
     const podDetails = button.closest('.pod-details');
     podDetails.classList.toggle('collapsed');
-    
-    // Sauvegarder les icônes actuelles
-    const icons = Array.from(button.children);
-    
-    // Modifier uniquement le texte principal du bouton
-    // On vide d'abord le bouton
-    button.innerHTML = '';
-    
-    // On ajoute le nouveau texte
-    const textNode = document.createTextNode(
-        podDetails.classList.contains('collapsed') ? 'Show Details' : 'Hide Details'
-    );
-    button.appendChild(textNode);
-    
-    // Réajouter les icônes
-    icons.forEach(icon => {
-        button.appendChild(icon);
-    });
+    button.textContent = podDetails.classList.contains('collapsed') ? 'Show Details' : 'Hide Details';
 }
 
 function manageWorkloadStatus(type, name, uid, action) {
