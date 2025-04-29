@@ -34,7 +34,15 @@
         <div class="section" id="deployment">
             <h2>Deployments</h2>
             <p>There are {{ deploy|length }} deployments in the cluster.</p>
-            <table>
+            <div class="search-container">
+                <div class="search-bar">
+                  <input type="text" id="deploymentSearch" placeholder="Rechercher par nom ou namespace...">
+                  <button id="resetSearch" title="Réinitialiser la recherche">
+                    <i class="material-icons">clear</i>
+                  </button>
+                </div>
+            </div>
+            <table id="deploymentTable">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -115,10 +123,9 @@
                                 class="btn btn-danger">Shutdown</button>
                             <button onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'up')"
                                 class="btn btn-success">Start</button>
-                       
-                                <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')" class="btn btn-primary">
-                                    <i class=" material-icons">edit</i>
-                                </button>
+                            <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')" class="btn btn-primary">
+                                <i class=" material-icons">edit</i>
+                            </button>
                         </td>
                         <td>
                             <div class="cron-info">
@@ -130,6 +137,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div id="noDeploymentResults" class="no-results">Aucun déploiement ne correspond à votre recherche.</div>
         </div>
 
         <div id="cronModal" class="modal">

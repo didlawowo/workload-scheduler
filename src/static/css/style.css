@@ -281,6 +281,61 @@
         display: inline-block;
     }
 
+    /* CSS pour la barre de recherche */
+    .search-container {
+        display: flex;
+        justify-content: flex-start;
+        margin: 20px 0;
+        width: 100%;
+    }
+
+    .search-bar {
+        display: flex;
+        width: 300px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .search-bar input {
+        flex-grow: 1;
+        padding: 8px 12px;
+        border: none;
+        outline: none;
+        font-size: 14px;
+    }
+
+    .search-bar button {
+        background-color: #4a90e2;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .search-bar button:hover {
+        background-color: #3182ce;
+    }
+
+    .search-bar button i {
+        font-size: 18px;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .no-results {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-style: italic;
+        display: none;
+    }
+
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
