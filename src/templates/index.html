@@ -85,7 +85,11 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">
+                                        Show Details
+                                        {% if pod.has_pvc %}
+                                        <span style="margin-left: 5px;" title="Has PVC">💾</span>
+                                        {% endif %}
                                         {% if not pod.resource_requests or not pod.resource_limits %}
                                           <span style="color: orange; margin-left: 5px;">⚠️</span>
                                         {% endif %}
@@ -199,9 +203,13 @@
                                             {{ pod.status }}
                                         </span>
                                     </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show Details
+                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">
+                                        Show Details
+                                        {% if pod.has_pvc %}
+                                        <span style="margin-left: 5px;" title="Has PVC">💾</span>
+                                        {% endif %}
                                         {% if not pod.resource_requests or not pod.resource_limits %}
-                                          <span style="color: orange; margin-left: 5px; font-weight: bold;">(!)</span>
+                                            <span style="color: orange; margin-left: 5px;">⚠️</span>
                                         {% endif %}
                                       </button>
                                 </div>

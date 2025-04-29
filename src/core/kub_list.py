@@ -163,11 +163,11 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
                             rs.metadata.name == owner.name for rs in active_rs
                         ):
                             # Check for PVCs
-                            # has_pvc = any(
-                            #     volume.persistent_volume_claim
-                            #     for volume in pod.spec.volumes
-                            #     if hasattr(volume, "persistent_volume_claim")
-                            # )
+                            has_pvc = any(
+                                volume.persistent_volume_claim
+                                for volume in pod.spec.volumes or []
+                                if hasattr(volume, "persistent_volume_claim") and volume.persistent_volume_claim
+                            )
 
                             # Get resource requests and limits
                             resources = pod.spec.containers[0].resources
@@ -184,12 +184,11 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
                             # ic(po)
                             pod_info.append(
                                 {
-                                    
                                     "name": pod.metadata.name,
                                     "node": pod.spec.node_name,
                                     "uid": pod.metadata.uid,
                                     "status": pod.status.phase,
-                                    "has_pvc": False,
+                                    "has_pvc": has_pvc,
                                     "resource_requests": requests,
                                     "resource_limits": limits,
                                     "replicaset": owner.name,
