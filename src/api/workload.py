@@ -4,7 +4,7 @@ from loguru import logger
 from typing import Any, Dict
 from utils.config import protected_namespaces
 from utils.helpers import core_v1, apps_v1
-from core.kub_list import list_all_deployments, list_all_sts
+# Importer les fonctions, mais nous allons utiliser directement les appels API Kubernetes
 from core.dbManager import DatabaseManager
 from pydantic import BaseModel
 from icecream import ic
@@ -40,40 +40,58 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
     logger.info("Received request to manage all workloads.")
     logger.info(f"mode: {mode}")
     try:
-        deployment_list = list_all_deployments
-        sts_list = list_all_sts
-
-        for deploy in deployment_list:
-            if mode == "down":
-                logger.info(
-                    f"Scaling down deploy '{deploy['name']}' in namespace '{deploy['namespace']}'"
-                )
-
-                await manage_status("down", "deploy", deploy['uid'])
-            elif mode == "up":
-                logger.info(
-                    f"Scaling up deploy '{deploy['name']}' in namespace '{deploy['namespace']}'"
-                )
-                await manage_status("up", "deploy", deploy['uid'])
-
-        for sts in sts_list:
-            if mode == "down":
-                logger.info(
-                    f"Scaling down StatefulSet '{sts['name']}' in namespace '{sts['namespace']}'"
-                )
-
-                await manage_status("down", "sts", deploy['uid'])
-            elif mode == "up":
-                logger.info(
-                    f"Scaling up StatefulSet '{sts['name']}' in namespace '{sts['namespace']}'"
-                )
-                await manage_status("up", "sts", deploy['uid'])
-        # For simplicity, this example responds with a success message regardless of individual failures
+        deployments = apps_v1.list_deployment_for_all_namespaces()
+        logger.info(f"Found {len(deployments.items)} deployments to process")
+        
+        statefulsets = apps_v1.list_stateful_set_for_all_namespaces()
+        logger.info(f"Found {len(statefulsets.items)} statefulsets to process")
+        
+        for deploy in deployments.items:
+            try:
+                deploy_name = deploy.metadata.name
+                deploy_namespace = deploy.metadata.namespace
+                deploy_uid = deploy.metadata.uid
+                
+                if deploy_namespace in protected_namespaces:
+                    logger.info(f"Skipping deployment {deploy_name} in protected namespace {deploy_namespace}")
+                    continue
+                
+                if mode == "down":
+                    logger.info(f"Scaling down deployment '{deploy_name}' in namespace '{deploy_namespace}'")
+                    await manage_status("down", "deploy", deploy_uid)
+                elif mode == "up":
+                    logger.info(f"Scaling up deployment '{deploy_name}' in namespace '{deploy_namespace}'")
+                    await manage_status("up", "deploy", deploy_uid)
+            except Exception as e:
+                logger.error(f"Error processing deployment {deploy.metadata.name}: {e}")
+        
+        for sts in statefulsets.items:
+            try:
+                sts_name = sts.metadata.name
+                sts_namespace = sts.metadata.namespace
+                sts_uid = sts.metadata.uid
+                
+                if sts_namespace in protected_namespaces:
+                    logger.info(f"Skipping statefulset {sts_name} in protected namespace {sts_namespace}")
+                    continue
+                
+                if mode == "down":
+                    logger.info(f"Scaling down StatefulSet '{sts_name}' in namespace '{sts_namespace}'")
+                    await manage_status("down", "sts", sts_uid)
+                elif mode == "up":
+                    logger.info(f"Scaling up StatefulSet '{sts_name}' in namespace '{sts_namespace}'")
+                    await manage_status("up", "sts", sts_uid)
+            except Exception as e:
+                logger.error(f"Error processing statefulset {sts.metadata.name}: {e}")
+                
         return {
-            "message": "Bulk action to scale down deployments initiated. Check logs for individual action results."
+            "message": f"Bulk action to {mode} all workloads initiated. Check logs for individual action results."
         }
     except Exception as e:
-        logger.error(f"Error while scaling down all workload Error: {e}")
+        logger.error(f"Error while scaling {mode} all workloads: {e}")
+        return {
+            "message": f"Error while scaling {mode} all workloads: {str(e)}"
+        }
 
 @workload.get(
     "/manage/{action}/{resource_type}/{uid}",
@@ -120,7 +138,7 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
                     logger.success(f"Scaled {[action]} sts")
                     return {
             "status": "success",
-            "message": f"deployment '{stateful_set.metadata.name}' in namespace '{stateful_set.metadata.namespace}' has been scaled '{action}'",
+            "message": f"statefulset '{stateful_set.metadata.name}' in namespace '{stateful_set.metadata.namespace}' has been scaled '{action}'",
         }
 
         elif resource_type == "ds":
@@ -138,7 +156,7 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
             
                     return {
             "status": "success",
-            "message": f"deployment '{daemonset.metadata.name}' in namespace '{daemonset.metadata.namespace}' has been scaled '{action}'",
+            "message": f"daemonset '{daemonset.metadata.name}' in namespace '{daemonset.metadata.namespace}' has been scaled '{action}'",
         }
         else:
             logger.error(f"Unknown resource type: {resource_type}")
