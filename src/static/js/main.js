@@ -11,10 +11,23 @@ const deleteBtn = document.getElementById('deleteBtn');
 
 function toggleWorkloadDetails(button) {
     const podDetails = button.closest('.pod-details');
+    const isCollapsed = podDetails.classList.contains('collapsed');
     podDetails.classList.toggle('collapsed');
-    button.textContent = podDetails.classList.contains('collapsed') ? 'Show Details' : 'Hide Details';
-}
 
+    let textNode = null;
+    for (let i = 0; i < button.childNodes.length; i++) {
+        if (button.childNodes[i].nodeType === Node.TEXT_NODE) {
+            textNode = button.childNodes[i];
+            break;
+        }
+    }
+    if (textNode) {
+        textNode.nodeValue = isCollapsed ? 'Hide Details' : 'Show Details';
+    } else {
+        const newTextNode = document.createTextNode(isCollapsed ? 'Hide Details' : 'Show Details');
+        button.insertBefore(newTextNode, button.firstChild);
+    }
+}
 function manageWorkloadStatus(type, name, uid, action) {
     let url = ``;
     if (action === 'down') {
