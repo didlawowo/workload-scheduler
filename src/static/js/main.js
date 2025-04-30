@@ -77,6 +77,8 @@ function closeModal() {
     document.querySelector('.modal-content h3').textContent = 'Éditeur d\'expression Cron';
     deleteBtn.style.display = 'none';
     currentScheduleId = null;
+    
+    refreshCronDisplay();
 }
 
 closeBtn.addEventListener('click', closeModal);
@@ -265,6 +267,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         updateCronInfo();
     }
+    
+    // Ajout : Chargement et affichage des crons pour tous les workloads
+    loadAllCronSchedules();
+    
+    // Écouter le bouton de suppression
+    const deleteBtn = document.getElementById('deleteBtn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+            if (currentScheduleId) {
+                deleteSchedule(currentScheduleId);
+            } else {
+                alert("Aucune programmation à supprimer.");
+            }
+        });
+    }
 });
 
 // Mettre à jour le gestionnaire d'événements pour le bouton "saveBtn"
@@ -329,7 +346,6 @@ saveBtn.addEventListener('click', () => {
         })
         .then(data => {
             console.log('Programmation mise à jour:', data);
-            getListSchedule();
             closeModal();
         })
         .catch(error => {
@@ -363,7 +379,6 @@ saveBtn.addEventListener('click', () => {
         })
         .then(data => {
             console.log('Programmation créée:', data);
-            getListSchedule();
             closeModal();
         })
         .catch(error => {
@@ -382,8 +397,8 @@ saveBtn.addEventListener('click', () => {
     }
 });
 
-// Fonction pour récupérer les programmations depuis l'API
-function getListSchedule() {
+// Fonction pour charger tous les schedules et les afficher
+function loadAllCronSchedules() {
     fetch('/schedules', {
         method: 'GET',
         headers: {
@@ -396,14 +411,68 @@ function getListSchedule() {
         }
         return response.json();
     })
-    .then(data => {
-        console.log('Programmations récupérées:', data);
-        // Mettre à jour le tableau avec les données récupérées
-        // updateScheduleTable(data);
+    .then(schedules => {
+        console.log('Programmations récupérées:', schedules);
+        
+        // Créer un mapping des programmations par UID
+        const schedulesByUid = {};
+        schedules.forEach(schedule => {
+            if (schedule.uid) {
+                schedulesByUid[schedule.uid] = schedule;
+            }
+        });
+        
+        // Rechercher les boutons d'édition pour trouver les workloads et mettre à jour leurs crons
+        const editButtons = document.querySelectorAll('button[onclick^="edit_prog"]');
+        editButtons.forEach(button => {
+            // Extraire l'UID du bouton edit_prog
+            const onclickAttr = button.getAttribute('onclick');
+            const match = onclickAttr.match(/edit_prog\('([^']+)'/);
+            
+            if (match && match[1]) {
+                const uid = match[1];
+                const schedule = schedulesByUid[uid];
+                
+                if (schedule) {
+                    updateWorkloadCronDisplay(schedule);
+                }
+            }
+        });
     })
     .catch(error => {
         console.error('Erreur lors de la récupération des programmations:', error);
     });
+}
+
+// Fonction pour mettre à jour l'affichage des crons d'un workload
+function updateWorkloadCronDisplay(schedule) {
+    const editButtons = document.querySelectorAll(`button[onclick*="'${schedule.uid}'"]`);
+    
+    if (editButtons.length === 0) {
+        console.log(`Aucun workload trouvé avec l'UID: ${schedule.uid}`);
+        return;
+    }
+    
+    editButtons.forEach(button => {
+        const parentCell = button.closest('td');
+        
+        const cronCell = parentCell.nextElementSibling;
+        
+        if (cronCell && cronCell.querySelector('.cron-info')) {
+            const cronStartDisplay = schedule.cron_start || 'Not set';
+            const cronStopDisplay = schedule.cron_stop || 'Not set';
+            
+            cronCell.querySelector('.cron-info').innerHTML = `
+                <div class="${schedule.cron_start ? 'cron-active' : ''}"><strong>Start:</strong> ${cronStartDisplay}</div>
+                <div class="${schedule.cron_stop ? 'cron-active' : ''}"><strong>Stop:</strong> ${cronStopDisplay}</div>
+            `;
+        }
+    });
+}
+
+// Fonction pour actualiser l'affichage des crons
+function refreshCronDisplay() {
+    loadAllCronSchedules();
 }
 
 // Fonction pour supprimer une programmation
@@ -420,7 +489,7 @@ function deleteSchedule(scheduleId) {
         })
         .then(data => {
             console.log('Programmation supprimée:', data);
-            // getListSchedule();
+            closeModal();
         })
         .catch(error => {
             console.error('Erreur lors de la suppression de la programmation:', error);
@@ -455,20 +524,6 @@ deleteBtn.addEventListener('click', () => {
         });
     }
 });
-
-// Fonction pour éditer un workload existant depuis le tableau
-// function editWorkload(scheduleId, cronValue) {
-//     currentScheduleId = scheduleId;
-
-//     cronStart.value = cronValue === 'Non programmé' ? defaultCronValue : cronValue;
-//     cronError.style.display = 'none';
-
-//     document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';
-
-//     saveBtn.dataset.mode = 'update';
-
-//     modal.style.display = 'block';
-// }
 
 function decodeCronExpression(expression) {
     if (!expression || !isValidCron(expression)) {
