@@ -233,8 +233,8 @@ async def remove_crons_from_schedule(
             logger.warning(f"Schedule with UID {uid} not found")
             raise HTTPException(status_code=404, detail="Schedule not found")
         
-        schedule.cron_start = "* * * * *"
-        schedule.cron_stop = "* * * * *"
+        schedule.cron_start = ""
+        schedule.cron_stop = ""
         schedule.status = "not scheduled"
         schedule.last_update = datetime.utcnow()
         

@@ -1,6 +1,5 @@
 const modal = document.getElementById('cronModal');
 const closeBtn = document.querySelector('.close');
-// const cancelBtn = document.getElementById('cancelBtn');
 const saveBtn = document.getElementById('saveBtn');
 const cronStart = document.getElementById('cronExpressionStart');
 const cronStop = document.getElementById('cronExpressionStop');
@@ -82,10 +81,9 @@ function closeModal() {
 }
 
 closeBtn.addEventListener('click', closeModal);
-// cancelBtn.addEventListener('click', closeModal);
 
 /* crontab management */
-let defaultCronValue = "*/5 * * * *";
+let defaultCronValue = "";
 let currentCronStartValue = defaultCronValue;
 let currentCronStopValue = defaultCronValue;
 let currentAction, currentName, currentDirection, currentUid;
@@ -94,7 +92,7 @@ let currentStatus = "not scheduled";
 let currentNamespace = "";
 
 function isValidCron(expression) {
-    if (!expression) return false;
+    if (!expression) return true; // Empty string is considered valid
 
     const cleanedExpression = expression.replace(/\s+/g, ' ').trim();
 
@@ -128,9 +126,11 @@ function isValidCron(expression) {
 }
 
 function cleanCronExpression(expression) {
-    if (!expression) return "* * * * *";
+    if (!expression) return "";
 
     let cleaned = expression.replace(/\s+/g, ' ').trim();
+
+    if (cleaned === "") return "";
 
     const parts = cleaned.split(' ');
 
@@ -188,8 +188,8 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             currentScheduleId = data.id;
             
             const hasCronExpressions =
-                data.cron_start !== "* * * * *" ||
-                data.cron_stop !== "* * * * *";
+                data.cron_start !== "" &&
+                data.cron_stop !== "";
             
             if (data.name) {
                 let currentWorkloadNameField = document.getElementById('currentWorkloadName');
@@ -235,6 +235,9 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             mode: saveBtn.dataset.mode,
             status: currentStatus
         });
+        
+        // Important: Update the cron info display immediately after loading the values
+        updateCronInfo();
     })
     .catch(error => {
         console.error('Erreur lors de la vérification des programmations:', error);
@@ -245,6 +248,9 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
         currentStatus = "not scheduled";
         
         deleteBtn.style.display = 'none';
+        
+        // Also update cron info even in case of error
+        updateCronInfo();
     })
     .finally(() => {
         modal.style.display = 'block';
@@ -260,12 +266,16 @@ document.addEventListener('DOMContentLoaded', function() {
         cronStartInput.addEventListener('input', updateCronInfo);
         cronStopInput.addEventListener('input', updateCronInfo);
 
-        const formGroup = document.querySelector('.form-group');
-        const cronInfoDiv = document.createElement('div');
-        cronInfoDiv.id = 'cronInfo';
-        formGroup.appendChild(cronInfoDiv);
-
-        updateCronInfo();
+        // Make sure cronInfoDiv exists
+        let cronInfoDiv = document.getElementById('cronInfo');
+        if (!cronInfoDiv) {
+            cronInfoDiv = document.createElement('div');
+            cronInfoDiv.id = 'cronInfo';
+            const formGroup = document.querySelector('.form-group');
+            if (formGroup) {
+                formGroup.appendChild(cronInfoDiv);
+            }
+        }
     }
     
     // Ajout : Chargement et affichage des crons pour tous les workloads
@@ -292,7 +302,8 @@ saveBtn.addEventListener('click', () => {
     cronStart.value = cron_start_value;
     cronStop.value = cron_stop_value;
 
-    if (!isValidCron(cron_start_value) || !isValidCron(cron_stop_value)){
+    if ((cron_start_value !== "" && !isValidCron(cron_start_value)) || 
+        (cron_stop_value !== "" && !isValidCron(cron_stop_value))){
         cronError.style.display = 'block';
         cronError.textContent = `Expression CRON invalide. Format attendu: minute heure jour_du_mois mois jour_de_la_semaine`;
         return;
@@ -311,14 +322,14 @@ saveBtn.addEventListener('click', () => {
     }
     
     // Générer le nom du workload uniquement pour les nouveaux workloads, pas pour les mises à jour
-    const workloadName = isUpdate ? document.getElementById('currentWorkloadName').value || `${currentAction}-${currentName}-${currentDirection}` : `${currentAction}-${currentName}-${currentDirection}`;
+    const workloadName = isUpdate ? document.getElementById('currentWorkloadName')?.value || `${currentAction}-${currentName}-${currentDirection}` : `${currentAction}-${currentName}-${currentDirection}`;
     
     console.log("Nom du workload à utiliser:", workloadName);
     console.log("Mode:", isUpdate ? "UPDATE" : "CREATE", "ScheduleID:", currentScheduleId);
 
     const nowStr = new Date().toISOString();
 
-    const hasCronExpression = currentCronStartValue !== "* * * * *" || currentCronStopValue !== "* * * * *";
+    const hasCronExpression = currentCronStartValue !== "" || currentCronStopValue !== "";
     const workloadStatus = hasCronExpression ? "scheduled" : "not scheduled";
 
     if (isUpdate) {
@@ -459,8 +470,8 @@ function updateWorkloadCronDisplay(schedule) {
         const cronCell = parentCell.nextElementSibling;
         
         if (cronCell && cronCell.querySelector('.cron-info')) {
-            const cronStartDisplay = schedule.cron_start || 'Not set';
-            const cronStopDisplay = schedule.cron_stop || 'Not set';
+            const cronStartDisplay = schedule.cron_start ? schedule.cron_start : 'Not set';
+            const cronStopDisplay = schedule.cron_stop ? schedule.cron_stop : 'Not set';
             
             cronCell.querySelector('.cron-info').innerHTML = `
                 <div class="${schedule.cron_start ? 'cron-active' : ''}"><strong>Start:</strong> ${cronStartDisplay}</div>
@@ -515,7 +526,7 @@ deleteBtn.addEventListener('click', () => {
         })
         .then(data => {
             console.log('Expressions Cron supprimées:', data);
-            getListSchedule();
+            refreshCronDisplay();  // Changed from getListSchedule() which doesn't exist
             closeModal();
         })
         .catch(error => {
@@ -526,7 +537,11 @@ deleteBtn.addEventListener('click', () => {
 });
 
 function decodeCronExpression(expression) {
-    if (!expression || !isValidCron(expression)) {
+    if (expression === "") {
+        return "Non programmé";
+    }
+    
+    if (!isValidCron(expression)) {
         return "Expression cron invalide";
     }
     
@@ -535,16 +550,15 @@ function decodeCronExpression(expression) {
         return "Format d'expression cron invalide";
     }
     
-    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
-    
     return generateSummary(parts);
 }
 
 function formatHour(hour) {
-    if (hour === 0) return "minuit";
-    if (hour === 12) return "midi";
-    if (hour < 12) return `${hour}h du matin`;
-    return `${hour-12}h de l'après-midi`;
+    const hourNum = parseInt(hour);
+    if (hourNum === 0) return "minuit";
+    if (hourNum === 12) return "midi";
+    if (hourNum < 12) return `${hourNum}h du matin`;
+    return `${hourNum-12}h de l'après-midi`;
 }
 
 function generateSummary(parts) {
@@ -595,7 +609,7 @@ function generateSummary(parts) {
             time += ` de chaque ${hour.split('/')[1]} heure(s)`;
         } else {
             const hourNum = parseInt(hour);
-            time += ` de l'heure ${hourNum} (${formatHour(hourNum)})`;
+            time += ` de l'heure ${hourNum} (${formatHour(hour)})`;
         }
     }
     
@@ -671,21 +685,31 @@ function updateCronInfo() {
     if (!cronInfoDiv) {
         cronInfoDiv = document.createElement('div');
         cronInfoDiv.id = 'cronInfo';
-        document.querySelector('.form-group').appendChild(cronInfoDiv);
+        const formGroup = document.querySelector('.form-group');
+        if (formGroup) {
+            formGroup.appendChild(cronInfoDiv);
+        } else {
+            console.error("No form-group element found to append cronInfo");
+            return;
+        }
     }
     
     let htmlContent = '<div class="cron-helper">';
     
     if (cronStartValue && isValidCron(cronStartValue)) {
         htmlContent += `<p><strong>Démarrage:</strong> ${decodeCronExpression(cronStartValue)}</p>`;
+    } else if (cronStartValue === "") {
+        htmlContent += `<p><strong>Démarrage:</strong> Non programmé</p>`;
     }
     
     if (cronStopValue && isValidCron(cronStopValue)) {
         htmlContent += `<p><strong>Arrêt:</strong> ${decodeCronExpression(cronStopValue)}</p>`;
+    } else if (cronStopValue === "") {
+        htmlContent += `<p><strong>Arrêt:</strong> Non programmé</p>`;
     }
     
     htmlContent += `
-        <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>    `;
+        <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>`;
     
     htmlContent += '</div>';
     cronInfoDiv.innerHTML = htmlContent;
