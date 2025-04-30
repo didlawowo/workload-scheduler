@@ -260,6 +260,27 @@
         animation: fadeIn 0.5s;
     }
 
+    .delete-btn {
+        background-color: #e53e3e;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
+    .delete-btn:hover {
+        background-color: #c53030;
+    }
+
+    .modal-content[data-mode="create"] #deleteBtn {
+        display: none;
+    }
+
+    .modal-content[data-mode="update"] #deleteBtn {
+        display: inline-block;
+    }
+
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }

@@ -207,3 +207,46 @@ async def delete_schedule_route(
     except Exception as e:
         logger.error(f"Error deleting schedule with ID {schedule_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting schedule: {str(e)}")
+
+@scheduler.put(
+    "/schedule/{uid}/remove-crons",
+    response_model=ScheduleResponse,
+    summary="Remove cron expressions from a schedule",
+    description="Remove cron expressions from an existing schedule without deleting the schedule"
+)
+async def remove_crons_from_schedule(
+    uid: str = Path(..., description="UID of the workload to update")
+) -> ScheduleResponse:
+    """
+    Supprime les expressions cron d'une programmation existante sans supprimer la programmation elle-même.
+    
+    Args:
+        uid: UID du workload dont on veut supprimer les crons
+    Returns:
+        Un objet ScheduleResponse indiquant le succès de l'opération
+    """
+    logger.info(f"PUT /schedule/{uid}/remove-crons")
+    try:
+        schedule = await db_manager.get_schedule(uid)
+        
+        if not schedule:
+            logger.warning(f"Schedule with UID {uid} not found")
+            raise HTTPException(status_code=404, detail="Schedule not found")
+        
+        schedule.cron_start = "* * * * *"
+        schedule.cron_stop = "* * * * *"
+        schedule.status = "not scheduled"
+        schedule.last_update = datetime.utcnow()
+        
+        success = await db_manager.update_schedule(schedule.id, schedule)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update schedule")
+        
+        logger.info(f"Successfully removed cron expressions from schedule with UID {uid}")
+        return {"status": "updated", "detail": "Cron expressions removed"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error removing cron expressions from schedule with UID {uid}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error updating schedule: {str(e)}")

@@ -111,9 +111,9 @@
                         </td>   
                         <td>
                             <button
-                                onclick="manageWorkloadStatus('deploy', 'down', '{{ d.uid }}')"
+                                onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'down')"
                                 class="btn btn-danger">Shutdown</button>
-                            <button onclick="manageWorkloadStatus('deploy', 'up', '{{ d.uid }}')"
+                            <button onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'up')"
                                 class="btn btn-success">Start</button>
                        
                                 <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', '{{ d.type }}')" class="btn btn-primary">
@@ -149,7 +149,7 @@
                     <div id="cronInfo" class="cron-helper"> </div>
                 </div>
                 <div class="actions">
-                    <button id="deleteBtn" class="btn delete-btn">Supprimer</button> <!-- TODO faire le bouton supp (couleur) et faire la fonc js-->
+                    <button id="deleteBtn" class="btn delete-btn">Supprimer</button>
                     <button id="saveBtn" class="btn save-btn">Enregistrer</button>
                 </div>
             </div>
