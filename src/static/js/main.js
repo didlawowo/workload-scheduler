@@ -40,15 +40,11 @@ function manageWorkloadStatus(type, name, uid, action) {
         url = `/manage-all/up`;
     }
 
-    console.log(`URL: ${url}`);
-
     // Afficher un indicateur de chargement
     document.getElementById('progressBar').style.width = '50%';
 
     fetch(url, { method: 'GET' })
         .then(response => {
-            console.log(`Réponse reçue, status: ${response.status}`);
-
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -57,7 +53,6 @@ function manageWorkloadStatus(type, name, uid, action) {
             document.getElementById('progressBar').style.width = '75%';
 
             const contentType = response.headers.get('content-type');
-            console.log(`Type de contenu: ${contentType}`);
 
             if (contentType && contentType.includes('application/json')) {
                 return response.json().then(data => {
@@ -65,7 +60,6 @@ function manageWorkloadStatus(type, name, uid, action) {
                 });
             } else {
                 return response.text().then(text => {
-                    console.log("Réponse texte:", text);
                     try {
                         // Tenter de parser le texte comme JSON
                         const jsonData = JSON.parse(text);
@@ -78,14 +72,11 @@ function manageWorkloadStatus(type, name, uid, action) {
             }
         })
         .then(result => {
-            console.log("Traitement de la réponse:", result);
 
             // Terminer la barre de progression
             document.getElementById('progressBar').style.width = '100%';
 
-            console.log("Attente avant rechargement...");
             setTimeout(() => {
-                console.log("Rechargement de la page...");
                 window.location.reload();
             }, 1000);
         })
@@ -195,7 +186,6 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
     cronStop.value = defaultCronValue;
     cronError.style.display = 'none';
 
-    console.log(`Récupération des données pour l'UID: ${uid}`);
 
     deleteBtn.style.display = 'none';
 
@@ -207,7 +197,6 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
     })
     .then(response => {
         if (response.status === 404) {
-            console.log(`Aucun schedule existant pour l'UID: ${uid}`);
             return null;
         }
         if (!response.ok) {
@@ -216,10 +205,8 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
         return response.json();
     })
     .then(data => {
-        console.log("Schedule data:", data);
         
         if (data && data.id) {
-            console.log(`Schedule existant trouvé pour l'UID: ${uid}, ID: ${data.id}`);
             cronStart.value = data.cron_start ? cleanCronExpression(data.cron_start) : defaultCronValue;
             cronStop.value = data.cron_stop ? cleanCronExpression(data.cron_stop) : defaultCronValue;
             currentScheduleId = data.id;
@@ -237,7 +224,6 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
                     document.querySelector('.modal-content').appendChild(currentWorkloadNameField);
                 }
                 currentWorkloadNameField.value = data.name;
-                console.log(`Nom actuel du workload préservé: ${data.name}`);
             }
             
             saveBtn.dataset.mode = 'update';
@@ -253,7 +239,6 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             }
             
         } else {
-            console.log(`Création d'un nouveau schedule pour l'UID: ${uid}`);
             currentScheduleId = null;
             saveBtn.dataset.mode = 'create';
             document.querySelector('.modal-content').dataset.mode = 'create';
@@ -262,17 +247,7 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             
             deleteBtn.style.display = 'none';
         }
-        
-        console.log("Workload info:", {
-            action: currentAction,
-            name: currentName,
-            direction: currentDirection,
-            uid: currentUid,
-            scheduleId: currentScheduleId,
-            mode: saveBtn.dataset.mode,
-            status: currentStatus
-        });
-        
+
         // Important: Update the cron info display immediately after loading the values
         updateCronInfo();
     })
@@ -375,9 +350,6 @@ saveBtn.addEventListener('click', () => {
 
     // Générer le nom du workload uniquement pour les nouveaux workloads, pas pour les mises à jour
     const workloadName = isUpdate ? document.getElementById('currentWorkloadName')?.value || `${currentAction}-${currentName}-${currentDirection}` : `${currentAction}-${currentName}-${currentDirection}`;
-    
-    console.log("Nom du workload à utiliser:", workloadName);
-    console.log("Mode:", isUpdate ? "UPDATE" : "CREATE", "ScheduleID:", currentScheduleId);
 
     const nowStr = new Date().toISOString();
 
@@ -385,7 +357,6 @@ saveBtn.addEventListener('click', () => {
     const workloadStatus = hasCronExpression ? "scheduled" : "not scheduled";
 
     if (isUpdate) {
-        console.log(`Mise à jour du schedule ID: ${currentScheduleId}`);
         fetch(`/schedules/${currentScheduleId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -408,7 +379,6 @@ saveBtn.addEventListener('click', () => {
                 return response.json();
             })
             .then(data => {
-                console.log('Programmation mise à jour:', data);
                 closeModal();
             })
             .catch(error => {
@@ -416,7 +386,6 @@ saveBtn.addEventListener('click', () => {
                 alert(`Erreur lors de la mise à jour de la programmation: ${error.message}`);
             });
     } else {
-        console.log(`Création d'un nouveau schedule pour UID: ${currentUid}`);
         fetch('/schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -441,7 +410,6 @@ saveBtn.addEventListener('click', () => {
                 return response.json();
             })
             .then(data => {
-                console.log('Programmation créée:', data);
                 closeModal();
             })
             .catch(error => {
@@ -475,7 +443,6 @@ function loadAllCronSchedules() {
             return response.json();
         })
         .then(schedules => {
-            console.log('Programmations récupérées:', schedules);
 
             // Créer un mapping des programmations par UID
             const schedulesByUid = {};
@@ -512,7 +479,6 @@ function updateWorkloadCronDisplay(schedule) {
     const editButtons = document.querySelectorAll(`button[onclick*="'${schedule.uid}'"]`);
 
     if (editButtons.length === 0) {
-        console.log(`Aucun workload trouvé avec l'UID: ${schedule.uid}`);
         return;
     }
 
@@ -551,7 +517,6 @@ function deleteSchedule(scheduleId) {
                 return response.json();
             })
             .then(data => {
-                console.log('Programmation supprimée:', data);
                 closeModal();
             })
             .catch(error => {
@@ -577,7 +542,6 @@ deleteBtn.addEventListener('click', () => {
             return response.json();
         })
         .then(data => {
-            console.log('Expressions Cron supprimées:', data);
             refreshCronDisplay();
             closeModal();
         })
