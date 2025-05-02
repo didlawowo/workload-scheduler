@@ -16,6 +16,7 @@ import warnings
 from api.scheduler import scheduler
 from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
+from utils.argocd import get_argocd_session_token
 from utils.config import protected_namespaces
 from utils.helpers import apps_v1, core_v1
 from scheduler_engine import SchedulerEngine
@@ -23,6 +24,7 @@ from core.dbManager import DatabaseManager
 
 os.environ["TZ"] = "Europe/Paris"
 log_level = os.getenv("LOG_LEVEL", "INFO")
+ic(log_level)
 logger.remove()
 logger.add(sys.stderr, level=log_level)
 
@@ -112,8 +114,8 @@ templates = Jinja2Templates(directory=templates_dir)
 class Workloads(BaseModel):
     workloads: List[str]
 
-
-# argo_session_token = get_argocd_session_token()
+if os.getenv("ARGOCD_API_URL"):
+    argo_session_token = get_argocd_session_token()
 
 # Déterminer l'environnement (développement ou production)
 is_dev = os.environ.get("APP_ENV", "development").lower() == "development"

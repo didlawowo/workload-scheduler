@@ -40,6 +40,11 @@ tasks:
     cmds:
     - kubectl apply -f src/tests/deployment.yaml
 
+  delete-deployment:
+    desc: delete a deployment kubernetes
+    cmds:
+    - kubectl delete -f src/tests/deployment.yaml
+
   test-api:
     desc: run API unit tests
     cmds:

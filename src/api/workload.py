@@ -2,12 +2,14 @@ from fastapi import APIRouter
 from kubernetes import client
 from loguru import logger
 from typing import Any, Dict
+from utils.argocd import get_argocd_session_token, patch_argocd_application, enable_auto_sync
 from utils.config import protected_namespaces
 from utils.helpers import core_v1, apps_v1
 # Importer les fonctions, mais nous allons utiliser directement les appels API Kubernetes
 from core.dbManager import DatabaseManager
 from pydantic import BaseModel
 from icecream import ic
+import os
 
 class PodStatus(BaseModel):
     name: str
@@ -27,6 +29,7 @@ class BulkActionResponse(BaseModel):
     message: str
 
 workload = APIRouter(tags=["Workload Management"])
+ARGOCD_API_URL = os.getenv("ARGOCD_API_URL", "http://localhost:8080/api/v1")
 
 health_route = APIRouter()
 
@@ -104,14 +107,16 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
     scale up or shutdown the specified Deployment, considering protected namespaces and labels.
     """
     logger.info(f"Manage {uid}'")
+    action_nbr = 0
+    if action == "up":
+        action_nbr = 1
 
     try:
-        action_nbr = 0
         if resource_type == "deploy":
             c = apps_v1.list_deployment_for_all_namespaces()
-            if action == "up":
-                action_nbr = 1
             for deploy in c.items :
+                if ARGOCD_API_URL:
+                    enable_auto_sync(deploy.metadata.labels["argocd.argoproj.io/instance"])
                 if deploy.metadata.uid == uid:
                     ic(deploy.metadata.uid)
                     body = {"spec": {"replicas": action_nbr}}
@@ -126,9 +131,9 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
         
         elif resource_type == "sts":
             c = apps_v1.list_stateful_set_for_all_namespaces()
-            if action == "up":
-                action_nbr = 1
             for stateful_set in c.items :
+                if ARGOCD_API_URL:
+                    enable_auto_sync(stateful_set.metadata.labels["argocd.argoproj.io/instance"])
                 if stateful_set.metadata.uid == uid:
                     ic(stateful_set.metadata.uid)
                     body = {"spec": {"replicas": action_nbr}}
@@ -143,9 +148,9 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
 
         elif resource_type == "ds":
             c = apps_v1.list_daemon_set_for_all_namespaces()
-            if action == "up":
-                action_nbr = 1
             for daemonset in c.items :
+                # if ARGOCD_API_URL:
+                #     enable_auto_sync(daemonset.metadata.labels["argocd.argoproj.io/instance"])
                 if daemonset.metadata.uid == uid:
                     ic(daemonset.metadata.uid)
                     body = {"spec": {"replicas": action_nbr}}
@@ -163,20 +168,23 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
             return {"status": "error", "message": f"Unknown resource type: {resource_type}"}
      
         # TODO restore auto-sync
-  
-        # application_name = c.metadata.labels["argocd.argoproj.io/instance"]
-        # Step 1: enable auto-sync
-        # logger.info(f"Enabling auto-sync for application '{application_name}'")
-        # patch_argocd_application(
-        #     token=argo_session_token,
-        #     app_name=application_name,
-        #     enable_auto_sync=True,
-        # )
-        # logger.success(
-        #     f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
-        # )
-      
-   
+        if os.getenv("ARGOCD_API_URL"):
+            for argocd in c.items:
+                ic(argocd.metadata.labels["argocd.argoproj.io/instance"])
+                application_name = argocd.metadata.labels["argocd.argoproj.io/instance"]
+            logger.debug(f"Application name: {application_name}")
+            argo_session_token = get_argocd_session_token()
+            # Step 1: enable auto-sync
+            logger.info(f"Enabling auto-sync for application '{application_name}'")
+            patch_argocd_application(
+                token=argo_session_token,
+                app_name=application_name,
+                enable_auto_sync=True,
+            )
+            logger.success(
+                f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
+            )
+
 
     except client.exceptions.ApiException as e:
         logger.error(e)

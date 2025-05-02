@@ -1,9 +1,12 @@
+from datetime import datetime
 import requests
 import json
 from loguru import logger
 import os
+from icecream import ic
+from jwt import decode as jwt_decode
 
-ARGOCD_API_URL = os.getenv("ARGOCD_API_URL", "https://localhost:8080/api/v1")
+ARGOCD_API_URL = os.getenv("ARGOCD_API_URL", "http://localhost:8080/api/v1")
 USERNAME = os.getenv("ARGOCD_USERNAME", "admin")
 PASSWORD = os.getenv("ARGOCD_PASSWORD", "admin")
 
@@ -36,6 +39,34 @@ def get_argocd_session_token():
     )
     return None
 
+def verify_argocd_session_token(token):
+    decode_token = jwt_decode(token, options={'verify_signature': False})
+    date_token = datetime.fromtimestamp(decode_token.get("exp"))
+    logger.debug(date_token)
+
+    current_time = datetime.now()
+    is_expired = date_token < current_time
+    logger.debug(is_expired)
+
+    if is_expired:
+        new_token = get_argocd_session_token()
+        return new_token
+    return token
+    
+
+def enable_auto_sync(application_name):
+    logger.debug(f"Application name: {application_name}")
+    argo_session_token = get_argocd_session_token()
+    logger.info(f"Enabling auto-sync for application '{application_name}'")
+    
+    patch_argocd_application(
+        token=argo_session_token,
+        app_name=application_name,
+        enable_auto_sync=True,
+    )
+    logger.success(
+        f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
+    )
 
 def patch_argocd_application(token, app_name, enable_auto_sync):
     """
@@ -48,8 +79,7 @@ def patch_argocd_application(token, app_name, enable_auto_sync):
     - enable_auto_sync (bool): Whether to enable or disable auto-sync.
 
     """
-    # Example usage
-
+    # new_token = verify_argocd_session_token(token)
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     res = requests.get(
         f"{ARGOCD_API_URL}/applications/{app_name}", headers=headers, timeout=3
