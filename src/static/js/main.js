@@ -81,7 +81,6 @@ function manageWorkloadStatus(type, name, uid, action) {
             }, 1000);
         })
         .catch(error => {
-            console.error('Erreur:', error);
             // Réinitialiser la barre de progression en cas d'erreur
             document.getElementById('progressBar').style.width = '0%';
             alert(`Une erreur est survenue: ${error.message}`);
@@ -252,7 +251,6 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
         updateCronInfo();
     })
     .catch(error => {
-        console.error('Erreur lors de la vérification des programmations:', error);
         currentScheduleId = null;
         saveBtn.dataset.mode = 'create';
         document.querySelector('.modal-content').dataset.mode = 'create';
@@ -382,7 +380,7 @@ saveBtn.addEventListener('click', () => {
                 closeModal();
             })
             .catch(error => {
-                console.error('Erreur lors de la mise à jour de la programmation:', error);
+                //console.error('Erreur lors de la mise à jour de la programmation:', error);
                 alert(`Erreur lors de la mise à jour de la programmation: ${error.message}`);
             });
     } else {
@@ -413,17 +411,17 @@ saveBtn.addEventListener('click', () => {
                 closeModal();
             })
             .catch(error => {
-                console.error('Erreur lors de la création de la programmation:', error);
+                //console.error('Erreur lors de la création de la programmation:', error);
                 alert(`Erreur lors de la création de la programmation: ${error.message}`);
 
-                console.error('Data sent:', {
-                    name: workloadName,
-                    uid: currentUid,
-                    cron_start: currentCronStartValue,
-                    cron_stop: currentCronStopValue,
-                    resource_name: currentName,
-                    status: workloadStatus
-                });
+                //console.error('Data sent:', {
+                //     name: workloadName,
+                //     uid: currentUid,
+                //     cron_start: currentCronStartValue,
+                //     cron_stop: currentCronStopValue,
+                //     resource_name: currentName,
+                //     status: workloadStatus
+                // });
             });
     }
 });
@@ -470,7 +468,7 @@ function loadAllCronSchedules() {
             });
         })
         .catch(error => {
-            console.error('Erreur lors de la récupération des programmations:', error);
+            //console.error('Erreur lors de la récupération des programmations:', error);
         });
 }
 
@@ -520,7 +518,7 @@ function deleteSchedule(scheduleId) {
                 closeModal();
             })
             .catch(error => {
-                console.error('Erreur lors de la suppression de la programmation:', error);
+                //console.error('Erreur lors de la suppression de la programmation:', error);
             });
     }
 }
@@ -546,7 +544,7 @@ deleteBtn.addEventListener('click', () => {
             closeModal();
         })
         .catch(error => {
-            console.error('Erreur lors de la suppression des expressions Cron:', error);
+            //console.error('Erreur lors de la suppression des expressions Cron:', error);
             alert(`Erreur lors de la suppression des expressions Cron: ${error.message}`);
         });
     }
@@ -707,7 +705,7 @@ function updateCronInfo() {
         if (formGroup) {
             formGroup.appendChild(cronInfoDiv);
         } else {
-            console.error("No form-group element found to append cronInfo");
+            //console.error("No form-group element found to append cronInfo");
             return;
         }
     }
