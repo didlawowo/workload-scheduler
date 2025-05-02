@@ -1,6 +1,5 @@
 const modal = document.getElementById('cronModal');
 const closeBtn = document.querySelector('.close');
-// const cancelBtn = document.getElementById('cancelBtn');
 const saveBtn = document.getElementById('saveBtn');
 const cronStart = document.getElementById('cronExpressionStart');
 const cronStop = document.getElementById('cronExpressionStop');
@@ -12,10 +11,23 @@ const deleteBtn = document.getElementById('deleteBtn');
 
 function toggleWorkloadDetails(button) {
     const podDetails = button.closest('.pod-details');
+    const isCollapsed = podDetails.classList.contains('collapsed');
     podDetails.classList.toggle('collapsed');
-    button.textContent = podDetails.classList.contains('collapsed') ? 'Show Details' : 'Hide Details';
-}
 
+    let textNode = null;
+    for (let i = 0; i < button.childNodes.length; i++) {
+        if (button.childNodes[i].nodeType === Node.TEXT_NODE) {
+            textNode = button.childNodes[i];
+            break;
+        }
+    }
+    if (textNode) {
+        textNode.nodeValue = isCollapsed ? 'Hide Details' : 'Show Details';
+    } else {
+        const newTextNode = document.createTextNode(isCollapsed ? 'Hide Details' : 'Show Details');
+        button.insertBefore(newTextNode, button.firstChild);
+    }
+}
 function manageWorkloadStatus(type, name, uid, action) {
     let url = ``;
     if (action === 'down') {
@@ -28,15 +40,11 @@ function manageWorkloadStatus(type, name, uid, action) {
         url = `/manage-all/up`;
     }
 
-    console.log(`URL: ${url}`);
-
     // Afficher un indicateur de chargement
     document.getElementById('progressBar').style.width = '50%';
 
     fetch(url, { method: 'GET' })
         .then(response => {
-            console.log(`Réponse reçue, status: ${response.status}`);
-
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -45,7 +53,6 @@ function manageWorkloadStatus(type, name, uid, action) {
             document.getElementById('progressBar').style.width = '75%';
 
             const contentType = response.headers.get('content-type');
-            console.log(`Type de contenu: ${contentType}`);
 
             if (contentType && contentType.includes('application/json')) {
                 return response.json().then(data => {
@@ -53,7 +60,6 @@ function manageWorkloadStatus(type, name, uid, action) {
                 });
             } else {
                 return response.text().then(text => {
-                    console.log("Réponse texte:", text);
                     try {
                         // Tenter de parser le texte comme JSON
                         const jsonData = JSON.parse(text);
@@ -66,19 +72,15 @@ function manageWorkloadStatus(type, name, uid, action) {
             }
         })
         .then(result => {
-            console.log("Traitement de la réponse:", result);
 
             // Terminer la barre de progression
             document.getElementById('progressBar').style.width = '100%';
 
-            console.log("Attente avant rechargement...");
             setTimeout(() => {
-                console.log("Rechargement de la page...");
                 window.location.reload();
             }, 1000);
         })
         .catch(error => {
-            console.error('Erreur:', error);
             // Réinitialiser la barre de progression en cas d'erreur
             document.getElementById('progressBar').style.width = '0%';
             alert(`Une erreur est survenue: ${error.message}`);
@@ -106,10 +108,9 @@ function closeModal() {
 }
 
 closeBtn.addEventListener('click', closeModal);
-// cancelBtn.addEventListener('click', closeModal);
 
 /* crontab management */
-let defaultCronValue = "*/5 * * * *";
+let defaultCronValue = "";
 let currentCronStartValue = defaultCronValue;
 let currentCronStopValue = defaultCronValue;
 let currentAction, currentName, currentDirection, currentUid;
@@ -118,7 +119,7 @@ let currentStatus = "not scheduled";
 let currentNamespace = "";
 
 function isValidCron(expression) {
-    if (!expression) return false;
+    if (!expression) return true; // Empty string is considered valid
 
     const cleanedExpression = expression.replace(/\s+/g, ' ').trim();
 
@@ -152,9 +153,11 @@ function isValidCron(expression) {
 }
 
 function cleanCronExpression(expression) {
-    if (!expression) return "* * * * *";
+    if (!expression) return "";
 
     let cleaned = expression.replace(/\s+/g, ' ').trim();
+
+    if (cleaned === "") return "";
 
     const parts = cleaned.split(' ');
 
@@ -182,7 +185,6 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
     cronStop.value = defaultCronValue;
     cronError.style.display = 'none';
 
-    console.log(`Récupération des données pour l'UID: ${uid}`);
 
     deleteBtn.style.display = 'none';
 
@@ -192,87 +194,77 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
             'Content-Type': 'application/json',
         }
     })
-        .then(response => {
-            if (response.status === 404) {
-                console.log(`Aucun schedule existant pour l'UID: ${uid}`);
-                return null;
-            }
-            if (!response.ok) {
-                throw new Error(`Erreur réseau: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log("Schedule data:", data);
-
-            if (data && data.id) {
-                console.log(`Schedule existant trouvé pour l'UID: ${uid}, ID: ${data.id}`);
-                cronStart.value = data.cron_start ? cleanCronExpression(data.cron_start) : defaultCronValue;
-                cronStop.value = data.cron_stop ? cleanCronExpression(data.cron_stop) : defaultCronValue;
-                currentScheduleId = data.id;
-
-                const hasCronExpressions =
-                    data.cron_start !== "* * * * *" ||
-                    data.cron_stop !== "* * * * *";
-
-                if (data.name) {
-                    let currentWorkloadNameField = document.getElementById('currentWorkloadName');
-                    if (!currentWorkloadNameField) {
-                        currentWorkloadNameField = document.createElement('input');
-                        currentWorkloadNameField.type = 'hidden';
-                        currentWorkloadNameField.id = 'currentWorkloadName';
-                        document.querySelector('.modal-content').appendChild(currentWorkloadNameField);
-                    }
-                    currentWorkloadNameField.value = data.name;
-                    console.log(`Nom actuel du workload préservé: ${data.name}`);
+    .then(response => {
+        if (response.status === 404) {
+            return null;
+        }
+        if (!response.ok) {
+            throw new Error(`Erreur réseau: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        
+        if (data && data.id) {
+            cronStart.value = data.cron_start ? cleanCronExpression(data.cron_start) : defaultCronValue;
+            cronStop.value = data.cron_stop ? cleanCronExpression(data.cron_stop) : defaultCronValue;
+            currentScheduleId = data.id;
+            
+            const hasCronExpressions =
+                data.cron_start !== "" &&
+                data.cron_stop !== "";
+            
+            if (data.name) {
+                let currentWorkloadNameField = document.getElementById('currentWorkloadName');
+                if (!currentWorkloadNameField) {
+                    currentWorkloadNameField = document.createElement('input');
+                    currentWorkloadNameField.type = 'hidden';
+                    currentWorkloadNameField.id = 'currentWorkloadName';
+                    document.querySelector('.modal-content').appendChild(currentWorkloadNameField);
                 }
-
-                saveBtn.dataset.mode = 'update';
-                document.querySelector('.modal-content').dataset.mode = 'update';
-                document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';
-
-                deleteBtn.style.display = hasCronExpressions ? 'inline-block' : 'none';
-
-                currentStatus = data.status;
-
-                if (resourceName) {
-                    currentName = resourceName;
-                }
-
-            } else {
-                console.log(`Création d'un nouveau schedule pour l'UID: ${uid}`);
-                currentScheduleId = null;
-                saveBtn.dataset.mode = 'create';
-                document.querySelector('.modal-content').dataset.mode = 'create';
-                document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
-                currentStatus = "not scheduled";
-
-                deleteBtn.style.display = 'none';
+                currentWorkloadNameField.value = data.name;
             }
-
-            console.log("Workload info:", {
-                action: currentAction,
-                name: currentName,
-                direction: currentDirection,
-                uid: currentUid,
-                scheduleId: currentScheduleId,
-                mode: saveBtn.dataset.mode,
-                status: currentStatus
-            });
-        })
-        .catch(error => {
-            console.error('Erreur lors de la vérification des programmations:', error);
+            
+            saveBtn.dataset.mode = 'update';
+            document.querySelector('.modal-content').dataset.mode = 'update';
+            document.querySelector('.modal-content h3').textContent = 'Modifier la programmation';
+            
+            deleteBtn.style.display = hasCronExpressions ? 'inline-block' : 'none';
+            
+            currentStatus = data.status;
+            
+            if (resourceName) {
+                currentName = resourceName;
+            }
+            
+        } else {
             currentScheduleId = null;
             saveBtn.dataset.mode = 'create';
             document.querySelector('.modal-content').dataset.mode = 'create';
             document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
             currentStatus = "not scheduled";
-
+            
             deleteBtn.style.display = 'none';
-        })
-        .finally(() => {
-            modal.style.display = 'block';
-        });
+        }
+
+        // Important: Update the cron info display immediately after loading the values
+        updateCronInfo();
+    })
+    .catch(error => {
+        currentScheduleId = null;
+        saveBtn.dataset.mode = 'create';
+        document.querySelector('.modal-content').dataset.mode = 'create';
+        document.querySelector('.modal-content h3').textContent = 'Nouvelle programmation';
+        currentStatus = "not scheduled";
+        
+        deleteBtn.style.display = 'none';
+        
+        // Also update cron info even in case of error
+        updateCronInfo();
+    })
+    .finally(() => {
+        modal.style.display = 'block';
+    });
 }
 
 // Charger les programmations au chargement de la page
@@ -285,12 +277,16 @@ document.addEventListener('DOMContentLoaded', function () {
         cronStartInput.addEventListener('input', updateCronInfo);
         cronStopInput.addEventListener('input', updateCronInfo);
 
-        const formGroup = document.querySelector('.form-group');
-        const cronInfoDiv = document.createElement('div');
-        cronInfoDiv.id = 'cronInfo';
-        formGroup.appendChild(cronInfoDiv);
-
-        updateCronInfo();
+        // Make sure cronInfoDiv exists
+        let cronInfoDiv = document.getElementById('cronInfo');
+        if (!cronInfoDiv) {
+            cronInfoDiv = document.createElement('div');
+            cronInfoDiv.id = 'cronInfo';
+            const formGroup = document.querySelector('.form-group');
+            if (formGroup) {
+                formGroup.appendChild(cronInfoDiv);
+            }
+        }
     }
 
     // Ajout : Chargement et affichage des crons pour tous les workloads
@@ -331,7 +327,8 @@ saveBtn.addEventListener('click', () => {
     cronStart.value = cron_start_value;
     cronStop.value = cron_stop_value;
 
-    if (!isValidCron(cron_start_value) || !isValidCron(cron_stop_value)) {
+    if ((cron_start_value !== "" && !isValidCron(cron_start_value)) || 
+        (cron_stop_value !== "" && !isValidCron(cron_stop_value))){
         cronError.style.display = 'block';
         cronError.textContent = `Expression CRON invalide. Format attendu: minute heure jour_du_mois mois jour_de_la_semaine`;
         return;
@@ -350,18 +347,14 @@ saveBtn.addEventListener('click', () => {
     }
 
     // Générer le nom du workload uniquement pour les nouveaux workloads, pas pour les mises à jour
-    const workloadName = isUpdate ? document.getElementById('currentWorkloadName').value || `${currentAction}-${currentName}-${currentDirection}` : `${currentAction}-${currentName}-${currentDirection}`;
-
-    console.log("Nom du workload à utiliser:", workloadName);
-    console.log("Mode:", isUpdate ? "UPDATE" : "CREATE", "ScheduleID:", currentScheduleId);
+    const workloadName = isUpdate ? document.getElementById('currentWorkloadName')?.value || `${currentAction}-${currentName}-${currentDirection}` : `${currentAction}-${currentName}-${currentDirection}`;
 
     const nowStr = new Date().toISOString();
 
-    const hasCronExpression = currentCronStartValue !== "* * * * *" || currentCronStopValue !== "* * * * *";
+    const hasCronExpression = currentCronStartValue !== "" || currentCronStopValue !== "";
     const workloadStatus = hasCronExpression ? "scheduled" : "not scheduled";
 
     if (isUpdate) {
-        console.log(`Mise à jour du schedule ID: ${currentScheduleId}`);
         fetch(`/schedules/${currentScheduleId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -384,15 +377,13 @@ saveBtn.addEventListener('click', () => {
                 return response.json();
             })
             .then(data => {
-                console.log('Programmation mise à jour:', data);
                 closeModal();
             })
             .catch(error => {
-                console.error('Erreur lors de la mise à jour de la programmation:', error);
+                //console.error('Erreur lors de la mise à jour de la programmation:', error);
                 alert(`Erreur lors de la mise à jour de la programmation: ${error.message}`);
             });
     } else {
-        console.log(`Création d'un nouveau schedule pour UID: ${currentUid}`);
         fetch('/schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -417,21 +408,20 @@ saveBtn.addEventListener('click', () => {
                 return response.json();
             })
             .then(data => {
-                console.log('Programmation créée:', data);
                 closeModal();
             })
             .catch(error => {
-                console.error('Erreur lors de la création de la programmation:', error);
+                //console.error('Erreur lors de la création de la programmation:', error);
                 alert(`Erreur lors de la création de la programmation: ${error.message}`);
 
-                console.error('Data sent:', {
-                    name: workloadName,
-                    uid: currentUid,
-                    cron_start: currentCronStartValue,
-                    cron_stop: currentCronStopValue,
-                    resource_name: currentName,
-                    status: workloadStatus
-                });
+                //console.error('Data sent:', {
+                //     name: workloadName,
+                //     uid: currentUid,
+                //     cron_start: currentCronStartValue,
+                //     cron_stop: currentCronStopValue,
+                //     resource_name: currentName,
+                //     status: workloadStatus
+                // });
             });
     }
 });
@@ -451,7 +441,6 @@ function loadAllCronSchedules() {
             return response.json();
         })
         .then(schedules => {
-            console.log('Programmations récupérées:', schedules);
 
             // Créer un mapping des programmations par UID
             const schedulesByUid = {};
@@ -479,7 +468,7 @@ function loadAllCronSchedules() {
             });
         })
         .catch(error => {
-            console.error('Erreur lors de la récupération des programmations:', error);
+            //console.error('Erreur lors de la récupération des programmations:', error);
         });
 }
 
@@ -488,7 +477,6 @@ function updateWorkloadCronDisplay(schedule) {
     const editButtons = document.querySelectorAll(`button[onclick*="'${schedule.uid}'"]`);
 
     if (editButtons.length === 0) {
-        console.log(`Aucun workload trouvé avec l'UID: ${schedule.uid}`);
         return;
     }
 
@@ -498,9 +486,9 @@ function updateWorkloadCronDisplay(schedule) {
         const cronCell = parentCell.nextElementSibling;
 
         if (cronCell && cronCell.querySelector('.cron-info')) {
-            const cronStartDisplay = schedule.cron_start || 'Not set';
-            const cronStopDisplay = schedule.cron_stop || 'Not set';
-
+            const cronStartDisplay = schedule.cron_start ? schedule.cron_start : 'Not set';
+            const cronStopDisplay = schedule.cron_stop ? schedule.cron_stop : 'Not set';
+            
             cronCell.querySelector('.cron-info').innerHTML = `
                 <div class="${schedule.cron_start ? 'cron-active' : ''}"><strong>Start:</strong> ${cronStartDisplay}</div>
                 <div class="${schedule.cron_stop ? 'cron-active' : ''}"><strong>Stop:</strong> ${cronStopDisplay}</div>
@@ -527,11 +515,10 @@ function deleteSchedule(scheduleId) {
                 return response.json();
             })
             .then(data => {
-                console.log('Programmation supprimée:', data);
                 closeModal();
             })
             .catch(error => {
-                console.error('Erreur lors de la suppression de la programmation:', error);
+                //console.error('Erreur lors de la suppression de la programmation:', error);
             });
     }
 }
@@ -546,26 +533,29 @@ deleteBtn.addEventListener('click', () => {
         fetch(`/schedule/${currentUid}/remove-crons`, {
             method: 'PUT'
         })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Expressions Cron supprimées:', data);
-                getListSchedule();
-                closeModal();
-            })
-            .catch(error => {
-                console.error('Erreur lors de la suppression des expressions Cron:', error);
-                alert(`Erreur lors de la suppression des expressions Cron: ${error.message}`);
-            });
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            refreshCronDisplay();
+            closeModal();
+        })
+        .catch(error => {
+            //console.error('Erreur lors de la suppression des expressions Cron:', error);
+            alert(`Erreur lors de la suppression des expressions Cron: ${error.message}`);
+        });
     }
 });
 
 function decodeCronExpression(expression) {
-    if (!expression || !isValidCron(expression)) {
+    if (expression === "") {
+        return "Non programmé";
+    }
+    
+    if (!isValidCron(expression)) {
         return "Expression cron invalide";
     }
 
@@ -580,10 +570,11 @@ function decodeCronExpression(expression) {
 }
 
 function formatHour(hour) {
-    if (hour === 0) return "minuit";
-    if (hour === 12) return "midi";
-    if (hour < 12) return `${hour}h du matin`;
-    return `${hour - 12}h de l'après-midi`;
+    const hourNum = parseInt(hour);
+    if (hourNum === 0) return "minuit";
+    if (hourNum === 12) return "midi";
+    if (hourNum < 12) return `${hourNum}h du matin`;
+    return `${hourNum-12}h de l'après-midi`;
 }
 
 function generateSummary(parts) {
@@ -634,7 +625,7 @@ function generateSummary(parts) {
             time += ` de chaque ${hour.split('/')[1]} heure(s)`;
         } else {
             const hourNum = parseInt(hour);
-            time += ` de l'heure ${hourNum} (${formatHour(hourNum)})`;
+            time += ` de l'heure ${hourNum} (${formatHour(hour)})`;
         }
     }
 
@@ -710,22 +701,32 @@ function updateCronInfo() {
     if (!cronInfoDiv) {
         cronInfoDiv = document.createElement('div');
         cronInfoDiv.id = 'cronInfo';
-        document.querySelector('.form-group').appendChild(cronInfoDiv);
+        const formGroup = document.querySelector('.form-group');
+        if (formGroup) {
+            formGroup.appendChild(cronInfoDiv);
+        } else {
+            //console.error("No form-group element found to append cronInfo");
+            return;
+        }
     }
 
     let htmlContent = '<div class="cron-helper">';
 
     if (cronStartValue && isValidCron(cronStartValue)) {
         htmlContent += `<p><strong>Démarrage:</strong> ${decodeCronExpression(cronStartValue)}</p>`;
+    } else if (cronStartValue === "") {
+        htmlContent += `<p><strong>Démarrage:</strong> Non programmé</p>`;
     }
 
     if (cronStopValue && isValidCron(cronStopValue)) {
         htmlContent += `<p><strong>Arrêt:</strong> ${decodeCronExpression(cronStopValue)}</p>`;
+    } else if (cronStopValue === "") {
+        htmlContent += `<p><strong>Arrêt:</strong> Non programmé</p>`;
     }
 
     htmlContent += `
-        <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>    `;
-
+        <p><strong>Format:</strong> minute heure jour_du_mois mois jour_de_la_semaine</p>`;
+    
     htmlContent += '</div>';
     cronInfoDiv.innerHTML = htmlContent;
 }

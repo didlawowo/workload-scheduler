@@ -281,6 +281,32 @@
         display: inline-block;
     }
 
+    .actions-container {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .btn-primary.edit-btn {
+        width: 40px;
+        height: 38px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        vertical-align: middle;
+    }
+    
+    .btn-primary.edit-btn .material-icons {
+        font-size: 20px;
+    }
+    
+    .actions-container .btn {
+        height: 38px;
+        margin: 0;
+    }
+    
     /* CSS pour la barre de recherche */
     .search-container {
         display: flex;
