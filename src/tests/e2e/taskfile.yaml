@@ -1,0 +1,35 @@
+version: '3'
+
+tasks:
+  install:
+    desc: Installe toutes les dépendances (Python et Node)
+    cmds:
+    - npm install
+    - npx playwright install
+    silent: true
+
+  test:
+    desc: Lance les tests Playwright
+    deps: [ install ]
+    cmds:
+    - npm run test
+    env:
+      NODE_ENV: test
+    silent: true
+
+  test:watch:
+    desc: Lance les tests Playwright en mode watch
+    deps: [ install ]
+    cmds:
+    - npm run test:ui
+    env:
+      NODE_ENV: test
+    silent: true
+
+  clean:
+    desc: Nettoie les fichiers temporaires et la base de données
+    cmds:
+    - rm -rf test-results
+    - rm -rf playwright-report
+    - rm -rf node_modules/.cache
+    silent: true

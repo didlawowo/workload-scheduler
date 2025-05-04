@@ -20,8 +20,8 @@
                 <img src="/static/image.png" alt="Kubernetes Logo" style="height: 50px;">
             </div>
             <div class="actions" id="globalActions" style="position: absolute; top: 0; right: 0;">
-                <button onclick="manageWorkloadStatus('','','','down-all')" class="btn btn-danger">Shutdown All</button>
-                <button onclick="manageWorkloadStatus('','','','up-all')" class="btn btn-success">Scale Up All</button>
+                <button data-testid="shutdown-all" onclick="manageWorkloadStatus('','','','down-all')" class="btn btn-danger">Shutdown All</button>
+                <button data-testid="scale-up-all" onclick="manageWorkloadStatus('','','','up-all')" class="btn btn-success">Scale Up All</button>
             </div>
         <p
             style="position: absolute; top: 20px;   margin: 20px auto; text-align: center; background-color: #3182ce; color: white; padding: 5px ; border-radius: 2px;">
@@ -37,7 +37,7 @@
             <div class="search-container">
                 <div class="search-bar">
                   <input type="text" id="deploymentSearch" placeholder="Rechercher par nom ou namespace...">
-                  <button id="resetSearch" title="Réinitialiser la recherche">
+                  <button data-testid="search" onclick="resetSearch" title="Réinitialiser la recherche">
                     <i class="material-icons">clear</i>
                   </button>
                 </div>
@@ -137,10 +137,10 @@
                         <td>
                             <div class="actions-container">
                                 {% if d.replicas is none or d.replicas == 0 %}
-                                    <button onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'up')"
+                                    <button data-testid="start" onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'up')"
                                         class="btn btn-success">Start</button>
                                 {% else %}
-                                    <button onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'down')"
+                                    <button data-testid="shutdown" onclick="manageWorkloadStatus('deploy', '{{d.name}}', '{{ d.uid }}', 'down')"
                                         class="btn btn-danger">Shutdown</button>
                                 {% endif %}
                                 <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', 'deploy')" class="btn btn-primary edit-btn">
