@@ -55,8 +55,8 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
                 deploy_namespace = deploy.metadata.namespace
                 deploy_uid = deploy.metadata.uid
                 
-                if deploy_namespace in protected_namespaces:
-                    logger.info(f"Skipping deployment {deploy_name} in protected namespace {deploy_namespace}")
+                if deploy_namespace in protected_namespaces or deploy_name.startswith("my-argo-cd"):
+                    logger.info(f"Skipping deployment {deploy_name} in namespace {deploy_namespace}")
                     continue
 
                 if mode == "down":
