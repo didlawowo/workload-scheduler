@@ -76,75 +76,41 @@ class ArgoTokenManager:
             logger.error(f"Error verifying token: {e}")
             return self._authenticate()
 
-
-# @logger.catch
-# def get_argocd_session_token():
-#     """
-#     Authenticates with the Argo CD API using username and password to obtain a session token.
-#     """
-#     logger.info("Authenticating with Argo CD...")
-#     auth_payload = {"username": USERNAME, "password": PASSWORD}
-#     response = requests.post(
-#         f"{ARGOCD_API_URL}/session",
-#         headers=headers,
-#         data=json.dumps(auth_payload),
-#         timeout=5,
-#     )
-
-#     if response.status_code == 200:
-#         session_token = response.json()["token"]
-#         # logger.debug(f"Session token: {session_token}")
-#         logger.success("Successfully authenticated with Argo CD.")
-#         return session_token
-
-#     logger.error(
-#         f"Failed to authenticate with Argo CD. Status code: {response.status_code}, Response: {response.text}"
-#     )
-#     return None
-
-# def verify_argocd_session_token(token):
-#     decode_token = jwt_decode(token, options={'verify_signature': False})
-#     date_token = datetime.fromtimestamp(decode_token.get("exp"))
-#     logger.debug(date_token)
-
-#     current_time = datetime.now()
-#     is_expired = date_token < current_time
-#     logger.debug(is_expired)
-
-#     if is_expired:
-#         argo_session_token = get_argocd_session_token()
-#         return argo_session_token
-#     return token
-    
-
 def enable_auto_sync(application_name):
-    logger.debug(f"Application name: {application_name}")
-    token_manager = ArgoTokenManager()
-    token = token_manager.get_token()
-    
-    logger.info(f"Enabling auto-sync for application '{application_name}'")
-    
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    res = requests.get(
-        f"{token_manager.ARGOCD_API_URL}/applications/{application_name}", headers=headers, timeout=3
-    )
-    app_config = res.json()
-    ic(token)
-    
-    auto_sync = False
-    if "spec" in app_config:
-        sync_policy = app_config["spec"].get("syncPolicy", {})
-        if "automated" in sync_policy:
-            auto_sync = True
-    
-    patch_argocd_application(
-        app_name=application_name,
-        enable_auto_sync=auto_sync,
-    )
-    
-    logger.success(
-        f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
-    )
+    try:
+        logger.debug(f"Application name: {application_name}")
+        token_manager = ArgoTokenManager()
+        token = token_manager.get_token()
+        
+        logger.info(f"Enabling auto-sync for application '{application_name}'")
+        
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        res = requests.get(
+            f"{token_manager.ARGOCD_API_URL}/applications/{application_name}", headers=headers, timeout=3
+        )
+        
+        if res.status_code != 200:
+            logger.warning(f"ArgoCD application '{application_name}' not found or API error: {res.status_code}")
+            return
+            
+        app_config = res.json()
+        
+        auto_sync = False
+        if "spec" in app_config:
+            sync_policy = app_config["spec"].get("syncPolicy", {})
+            if "automated" in sync_policy:
+                auto_sync = True
+        
+        patch_argocd_application(
+            app_name=application_name,
+            enable_auto_sync=auto_sync,
+        )
+        
+        logger.success(
+            f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
+        )
+    except Exception as e:
+        logger.error(f"Error enabling auto-sync for application '{application_name}': {e}")
 
 def patch_argocd_application(app_name, enable_auto_sync):
     """

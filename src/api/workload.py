@@ -58,7 +58,7 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
                 if deploy_namespace in protected_namespaces:
                     logger.info(f"Skipping deployment {deploy_name} in protected namespace {deploy_namespace}")
                     continue
-                
+
                 if mode == "down":
                     logger.info(f"Scaling down deployment '{deploy_name}' in namespace '{deploy_namespace}'")
                     await manage_status("down", "deploy", deploy_uid)
@@ -73,11 +73,11 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
                 sts_name = sts.metadata.name
                 sts_namespace = sts.metadata.namespace
                 sts_uid = sts.metadata.uid
-                
+
                 if sts_namespace in protected_namespaces:
                     logger.info(f"Skipping statefulset {sts_name} in protected namespace {sts_namespace}")
                     continue
-                
+
                 if mode == "down":
                     logger.info(f"Scaling down StatefulSet '{sts_name}' in namespace '{sts_namespace}'")
                     await manage_status("down", "sts", sts_uid)
@@ -86,7 +86,7 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
                     await manage_status("up", "sts", sts_uid)
             except Exception as e:
                 logger.error(f"Error processing statefulset {sts.metadata.name}: {e}")
-                
+
         return {
             "message": f"Bulk action to {mode} all workloads initiated. Check logs for individual action results."
         }
@@ -114,28 +114,31 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
     try:
         if resource_type == "deploy":
             c = apps_v1.list_deployment_for_all_namespaces()
-            for deploy in c.items :
-                if ARGOCD_API_URL:
-                    enable_auto_sync(deploy.metadata.labels["argocd.argoproj.io/instance"])
+            for deploy in c.items:
                 if deploy.metadata.uid == uid:
                     ic(deploy.metadata.uid)
+                    if ARGOCD_API_URL and deploy.metadata.labels and "argocd.argoproj.io/instance" in deploy.metadata.labels:
+                        instance_name = deploy.metadata.labels["argocd.argoproj.io/instance"]
+                        enable_auto_sync(instance_name)
+                    
                     body = {"spec": {"replicas": action_nbr}}
                     apps_v1.patch_namespaced_deployment_scale(
                         name=deploy.metadata.name, namespace=deploy.metadata.namespace, body=body
                     )
                     logger.success(f"Scaled {[action]} deplyment")
                     return {
-            "status": "success",
-            "message": f"deployment '{deploy.metadata.name}' in namespace '{deploy.metadata.namespace}' has been scaled '{action}'",
-        }
+                        "status": "success",
+                        "message": f"deployment '{deploy.metadata.name}' in namespace '{deploy.metadata.namespace}' has been scaled '{action}'",
+                    }
         
         elif resource_type == "sts":
             c = apps_v1.list_stateful_set_for_all_namespaces()
             for stateful_set in c.items :
-                if ARGOCD_API_URL:
-                    enable_auto_sync(stateful_set.metadata.labels["argocd.argoproj.io/instance"])
+                if ARGOCD_API_URL and stateful_set.metadata.labels and "argocd.argoproj.io/instance" in stateful_set.metadata.labels:
+                    instance_name = stateful_set.metadata.labels["argocd.argoproj.io/instance"]
+                    enable_auto_sync(instance_name)
+
                 if stateful_set.metadata.uid == uid:
-                    ic(stateful_set.metadata.uid)
                     body = {"spec": {"replicas": action_nbr}}
                     apps_v1.patch_namespaced_stateful_set_scale(
                         name=stateful_set.metadata.name, namespace=stateful_set.metadata.namespace, body=body
@@ -149,10 +152,11 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
         elif resource_type == "ds":
             c = apps_v1.list_daemon_set_for_all_namespaces()
             for daemonset in c.items :
-                # if ARGOCD_API_URL:
-                #     enable_auto_sync(daemonset.metadata.labels["argocd.argoproj.io/instance"])
+                if ARGOCD_API_URL and stateful_set.metadata.labels and "argocd.argoproj.io/instance" in stateful_set.metadata.labels:
+                    instance_name = stateful_set.metadata.labels["argocd.argoproj.io/instance"]
+                    enable_auto_sync(instance_name)
+
                 if daemonset.metadata.uid == uid:
-                    ic(daemonset.metadata.uid)
                     body = {"spec": {"replicas": action_nbr}}
                     apps_v1.patch_namespaced_daemon_set(
                         name=daemonset.metadata.name, namespace=daemonset.metadata.namespace, body=body
