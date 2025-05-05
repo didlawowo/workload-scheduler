@@ -267,11 +267,59 @@ function edit_prog(uid, resourceName = "", resourceType = "deploy", direction = 
     });
 }
 
+function filterAllWorkloads() {
+    const searchInput = document.getElementById('globalSearch').value.toLowerCase();
+
+    filterTable("deploymentTable", searchInput, "noDeploymentResults");
+    filterTable("statefulsetTable", searchInput, "noStatefulsetResults");
+    filterTable("daemonsets table", searchInput, null);
+}
+
+function filterTable(tableSelector, searchInput, noResultsId) {
+    const table = document.querySelector(`#${tableSelector}`) || document.querySelector(tableSelector);
+    
+    if (!table) return;
+    
+    const rows = table.getElementsByTagName('tr');
+    let hasVisibleRows = false;
+
+    for (let i = 1; i < rows.length; i++) {
+        const nameCell = rows[i].getElementsByTagName('td')[0];
+        const namespaceCell = rows[i].getElementsByTagName('td')[1];
+
+        if (nameCell && namespaceCell) {
+            const nameText = nameCell.textContent || nameCell.innerText;
+            const namespaceText = namespaceCell.textContent || namespaceCell.innerText;
+
+            if (nameText.toLowerCase().indexOf(searchInput) > -1 ||
+                namespaceText.toLowerCase().indexOf(searchInput) > -1) {
+                rows[i].classList.remove('hidden');
+                hasVisibleRows = true;
+            } else {
+                rows[i].classList.add('hidden');
+            }
+        }
+    }
+
+    if (noResultsId) {
+        const noResultsMessage = document.getElementById(noResultsId);
+        if (noResultsMessage) {
+            noResultsMessage.style.display = hasVisibleRows ? 'none' : 'block';
+        }
+    }
+}
+
+
+function resetGlobalSearch() {
+    document.getElementById('globalSearch').value = '';
+    filterAllWorkloads();
+}
+
 // Charger les programmations au chargement de la page
 document.addEventListener('DOMContentLoaded', function () {
     const cronStartInput = document.getElementById('cronExpressionStart');
     const cronStopInput = document.getElementById('cronExpressionStop');
-    const searchInput = document.getElementById('deploymentSearch');
+    const globalSearchInput = document.getElementById('globalSearch');
 
     if (cronStartInput && cronStopInput) {
         cronStartInput.addEventListener('input', updateCronInfo);
@@ -303,21 +351,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        if (searchInput) {
-            searchInput.addEventListener('input', filterDeployments);
+    if (globalSearchInput) {
+        globalSearchInput.addEventListener('input', filterAllWorkloads);
 
-            searchInput.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape') {
-                    resetSearch();
-                }
-            });
-
-            const resetButton = document.getElementById('resetSearch');
-            if (resetButton) {
-                resetButton.addEventListener('click', resetSearch);
+        globalSearchInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                resetGlobalSearch();
             }
+        });
+
+        const resetGlobalButton = document.getElementById('resetGlobalSearch');
+        if (resetGlobalButton) {
+            resetGlobalButton.addEventListener('click', resetGlobalSearch);
         }
-    }});
+    }
+}});
 
 // Mettre à jour le gestionnaire d'événements pour le bouton "saveBtn"
 saveBtn.addEventListener('click', () => {
@@ -729,42 +777,4 @@ function updateCronInfo() {
     
     htmlContent += '</div>';
     cronInfoDiv.innerHTML = htmlContent;
-}
-
-// Fonction pour filtrer les déploiements
-function filterDeployments() {
-    const searchInput = document.getElementById('deploymentSearch').value.toLowerCase();
-    const deploymentTable = document.getElementById('deploymentTable');
-    const rows = deploymentTable.getElementsByTagName('tr');
-    const noResultsMessage = document.getElementById('noDeploymentResults');
-
-    let hasVisibleRows = false;
-
-    for (let i = 1; i < rows.length; i++) {
-        const nameCell = rows[i].getElementsByTagName('td')[0];
-        const namespaceCell = rows[i].getElementsByTagName('td')[1];
-
-        if (nameCell && namespaceCell) {
-            const nameText = nameCell.textContent || nameCell.innerText;
-            const namespaceText = namespaceCell.textContent || namespaceCell.innerText;
-
-            if (nameText.toLowerCase().indexOf(searchInput) > -1 ||
-                namespaceText.toLowerCase().indexOf(searchInput) > -1) {
-                rows[i].classList.remove('hidden');
-                hasVisibleRows = true;
-            } else {
-                rows[i].classList.add('hidden');
-            }
-        }
-    }
-
-    if (noResultsMessage) {
-        noResultsMessage.style.display = hasVisibleRows ? 'none' : 'block';
-    }
-}
-
-// Fonction pour réinitialiser la recherche
-function resetSearch() {
-    document.getElementById('deploymentSearch').value = '';
-    filterDeployments();
 }
