@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from kubernetes import client
 from loguru import logger
 from typing import Any, Dict
-from utils.argocd import get_argocd_session_token, patch_argocd_application, enable_auto_sync
+from utils.argocd import enable_auto_sync
 from utils.config import protected_namespaces
 from utils.helpers import core_v1, apps_v1
 # Importer les fonctions, mais nous allons utiliser directement les appels API Kubernetes
@@ -166,25 +166,6 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
         else:
             logger.error(f"Unknown resource type: {resource_type}")
             return {"status": "error", "message": f"Unknown resource type: {resource_type}"}
-     
-        # TODO restore auto-sync
-        if os.getenv("ARGOCD_API_URL"):
-            for argocd in c.items:
-                ic(argocd.metadata.labels["argocd.argoproj.io/instance"])
-                application_name = argocd.metadata.labels["argocd.argoproj.io/instance"]
-            logger.debug(f"Application name: {application_name}")
-            argo_session_token = get_argocd_session_token()
-            # Step 1: enable auto-sync
-            logger.info(f"Enabling auto-sync for application '{application_name}'")
-            patch_argocd_application(
-                token=argo_session_token,
-                app_name=application_name,
-                enable_auto_sync=True,
-            )
-            logger.success(
-                f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
-            )
-
 
     except client.exceptions.ApiException as e:
         logger.error(e)

@@ -16,7 +16,7 @@ import warnings
 from api.scheduler import scheduler
 from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
-from utils.argocd import get_argocd_session_token
+from utils.argocd import ArgoTokenManager
 from utils.config import protected_namespaces
 from utils.helpers import apps_v1, core_v1
 from scheduler_engine import SchedulerEngine
@@ -114,8 +114,16 @@ templates = Jinja2Templates(directory=templates_dir)
 class Workloads(BaseModel):
     workloads: List[str]
 
-if os.getenv("ARGOCD_API_URL"):
-    argo_session_token = get_argocd_session_token()
+token_manager = ArgoTokenManager()
+
+async def init_argocd_token():
+    """Initialise le token ArgoCD global"""
+    if os.getenv("ARGOCD_API_URL"):
+        logger.info("Initializing ArgoCD session token...")
+        token_manager.get_token()
+        logger.success("ArgoCD session token initialized.")
+    else:
+        logger.warning("ARGOCD_API_URL not set, skipping token initialization")
 
 # Déterminer l'environnement (développement ou production)
 is_dev = os.environ.get("APP_ENV", "development").lower() == "development"
@@ -176,6 +184,7 @@ def status(request: Request):
 async def main():
     logger.info("🚀 Application starting.")
     await init_database()
+    await init_argocd_token()
 
 if __name__ == "__main__":
     if platform.system() == "Darwin":
