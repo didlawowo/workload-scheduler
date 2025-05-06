@@ -33,6 +33,10 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
                                 if hasattr(volume, "persistent_volume_claim")
                             )
 
+                            has_argocd = False
+                            if ds.metadata.labels and "argocd.argoproj.io/instance" in ds.metadata.labels:
+                                has_argocd = True
+
                             # Get resource requests and limits
                             resources = pod.spec.containers[0].resources
                             requests = (
@@ -66,6 +70,7 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
                                     "node": pod.spec.node_name,
                                     "status": pod.status.phase,
                                     "has_pvc": has_pvc,
+                                    "has_argocd": has_argocd,
                                     "resource_requests": requests,
                                     "resource_limits": limits,
                                     "node_conditions": "",  # node_conditions,
@@ -169,6 +174,10 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
                                 if hasattr(volume, "persistent_volume_claim") and volume.persistent_volume_claim
                             )
 
+                            has_argocd = False
+                            if d.metadata.labels and "argocd.argoproj.io/instance" in d.metadata.labels:
+                                has_argocd = True
+
                             # Get resource requests and limits
                             resources = pod.spec.containers[0].resources
                             requests = (
@@ -189,6 +198,7 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
                                     "uid": pod.metadata.uid,
                                     "status": pod.status.phase,
                                     "has_pvc": has_pvc,
+                                    "has_argocd": has_argocd,
                                     "resource_requests": requests,
                                     "resource_limits": limits,
                                     "replicaset": owner.name,
@@ -254,6 +264,10 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces):
                                     if hasattr(volume, "persistent_volume_claim")
                                 )
 
+                                has_argocd = False
+                                if s.metadata.labels and "argocd.argoproj.io/instance" in s.metadata.labels:
+                                    has_argocd = True
+
                                 # Get resource requests and limits
                                 resources = pod.spec.containers[0].resources
                                 requests = (
@@ -273,6 +287,7 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces):
                                         "node": pod.spec.node_name,
                                         "status": pod.status.phase,
                                         "has_pvc": has_pvc,
+                                        "has_argocd": has_argocd,
                                         "resource_requests": requests,
                                         "resource_limits": limits,
                                     }

@@ -117,11 +117,19 @@ class Workloads(BaseModel):
 token_manager = ArgoTokenManager()
 
 async def init_argocd_token():
-    """Initialise le token ArgoCD global"""
+    """Initialise le token ArgoCD global avec gestion d'erreur"""
     if os.getenv("ARGOCD_API_URL"):
-        logger.info("Initializing ArgoCD session token...")
-        token_manager.get_token()
-        logger.success("ArgoCD session token initialized.")
+        try:
+            logger.info("Initializing ArgoCD session token...")
+            token = token_manager.get_token()
+            
+            if not token:
+                logger.error("Failed to obtain ArgoCD token. Check credentials or ArgoCD server availability.")
+
+            logger.success("ArgoCD session token initialized.")
+        except Exception as e:
+            logger.error(f"Error initializing ArgoCD token: {str(e)}")
+            logger.warning("ArgoCD integration will not be available.")
     else:
         logger.warning("ARGOCD_API_URL not set, skipping token initialization")
 

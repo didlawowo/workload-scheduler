@@ -90,6 +90,9 @@
                                         {% if pod.has_pvc %}
                                         <span style="margin-left: 5px;" title="Has PVC">💾</span>
                                         {% endif %}
+                                        {% if pod.has_argocd %}
+                                        <span style="margin-left: 5px;" title="Connected to ArgoCD">⎈</span>
+                                        {% endif %}
                                         {% if not pod.resource_requests or not pod.resource_limits %}
                                         <span style="color: orange; margin-left: 5px;">⚠️</span>
                                         {% endif %}
@@ -225,8 +228,11 @@
                                         {% if pod.has_pvc %}
                                         <span style="margin-left: 5px;" title="Has PVC">💾</span>
                                         {% endif %}
+                                        {% if pod.has_argocd %}
+                                        <span style="margin-left: 5px;" title="Connected to ArgoCD">⎈</span>
+                                        {% endif %}
                                         {% if not pod.resource_requests or not pod.resource_limits %}
-                                            <span style="color: orange; margin-left: 5px;">⚠️</span>
+                                        <span style="color: orange; margin-left: 5px;">⚠️</span>
                                         {% endif %}
                                       </button>
                                 </div>

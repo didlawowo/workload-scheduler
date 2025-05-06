@@ -4,7 +4,7 @@ import json
 from loguru import logger
 import os
 from icecream import ic
-from jwt import decode as jwt_decode
+from jwt import encode as jwt_encode, decode as jwt_decode
 
 class ArgoTokenManager:
     _instance = None
@@ -44,6 +44,8 @@ class ArgoTokenManager:
 
             if response.status_code == 200:
                 session_token = response.json()["token"]
+                secret_key = os.getenv("JWT_SECRET_KEY", "Wx7KpLzJ5q3RbT9dN8fEyU2mA6vH4cGQ")
+                self._verify_signature(session_token, secret_key)
                 logger.success("Successfully authenticated with Argo CD.")
                 return session_token
             logger.error(
@@ -53,6 +55,39 @@ class ArgoTokenManager:
         except Exception as e:
             logger.error(f"Exception during authentication with Argo CD: {str(e)}")
             return None
+
+    def _verify_signature(self, token, secret_key):
+        """
+        Vérifie la signature du token sans modifier le token original.
+        Lève une exception si la signature n'est pas valide.
+        """
+        try:
+            payload = jwt_decode(token, options={'verify_signature': False})
+            
+            new_token = jwt_encode(payload, secret_key, algorithm="HS256")
+            
+            if isinstance(new_token, bytes):
+                new_token = new_token.decode('utf-8')
+            if isinstance(token, bytes):
+                token = token.decode('utf-8')
+                
+            token_parts = token.split('.')
+            new_token_parts = new_token.split('.')
+            
+            if len(token_parts) >= 3 and len(new_token_parts) >= 3:
+                if token_parts[2] == new_token_parts[2]:
+                    logger.debug("Token signature verified successfully")
+                    return True
+                else:
+                    logger.warning("Token signature verification failed: signatures don't match")
+                    return False
+            else:
+                logger.warning("Invalid token format for signature verification")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Token signature verification failed: {e}")
+            return False
 
     def _verify_token(self, token):
         """
@@ -71,10 +106,21 @@ class ArgoTokenManager:
             if is_expired:
                 logger.info("Token expired, getting new token")
                 return self._authenticate()
+                
+            secret_key = os.getenv("JWT_SECRET_KEY", "Wx7KpLzJ5q3RbT9dN8fEyU2mA6vH4cGQ")
+            self._verify_signature(token, secret_key)
+            
             return token
         except Exception as e:
             logger.error(f"Error verifying token: {e}")
             return self._authenticate()
+        
+def handle_argocd_auto_sync(resource):
+    token_manager = ArgoTokenManager()
+    if (token_manager.ARGOCD_API_URL and resource.metadata.labels and "argocd.argoproj.io/instance" in resource.metadata.labels):
+        
+        instance_name = resource.metadata.labels["argocd.argoproj.io/instance"]
+        enable_auto_sync(instance_name)
 
 def enable_auto_sync(application_name):
     try:
