@@ -55,6 +55,11 @@ tasks:
     cmds:
     - pytest src/tests/test_integration.py -v
 
+  test-argocd:
+    desc: run argocd unit tests
+    cmds:
+    - pytest src/tests/test_argocd.py -v
+
   coverage-api:
     desc: run API unit tests with code coverage
     cmds:
@@ -65,6 +70,12 @@ tasks:
     desc: run integration tests with code coverage
     cmds:
     - coverage run -m pytest src/tests/test_integration.py
+    - coverage report -m
+
+  coverage-argocd:
+    desc: run argocd tests with code coverage
+    cmds:
+    - coverage run -m pytest src/tests/test_argocd.py
     - coverage report -m
   # TODO add lib dep requirements.txt
 
