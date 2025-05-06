@@ -120,54 +120,62 @@ is_dev = os.environ.get("APP_ENV", "development").lower() == "development"
 
 async def init_database():
     """Initialise la base de données et stocke les UIDs des workloads"""
-    logger.info("Initializing database...")
+    try:
+        logger.info("Initializing database...")
+        
+        await db.create_table()
+        logger.success("Database created and tables initialized.")
+        
+        deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
+        sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
+        ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
+        
+        logger.success(
+            f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)}"
+        )
+        
+        for dep in deployment_list:
+            await db.store_uid(dep.get("uid"), dep.get('name'))
+        for sts in sts_list:
+            await db.store_uid(sts.get("uid"), sts.get('name'))
+        for ds in ds_list:
+            await db.store_uid(ds.get("uid"), ds.get('name'))
+        logger.success("UIDs stored in database.")
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}")
+        raise
 
-    await db.create_table()
-    logger.success("Database created and tables initialized.")
-
-    deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
-    sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
-    ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
-
-    logger.success(
-        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)}"
-    )
-
-    for dep in deployment_list:
-        await db.store_uid(dep.get("uid"), dep.get('name'))
-    for sts in sts_list:
-        await db.store_uid(sts.get("uid"), sts.get('name'))
-    for ds in ds_list:
-        await db.store_uid(ds.get("uid"), ds.get('name'))
-    logger.success("UIDs stored in database.")
-
- 
 
 @app.get("/", response_class=HTMLResponse)
 def status(request: Request):
     """
     Fetches all Deployments /   and renders them using a Jinja2 template.
     """
-    logger.info("Fetching Deployments, Daemonets and StatefulSets...")
-    deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
-    sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
-    ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
-
-    logger.success(
-        f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)},  "
-    )
-    # Render the template with the list of Deployments
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "deploy": deployment_list,
-            "sts": sts_list,
-            "ds": ds_list,
-            # Use the version in your code
-            "version": version,
-        },
-    )
+    try:
+        logger.info("Fetching Deployments, Daemonets and StatefulSets...")
+        deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
+        sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
+        ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
+        
+        logger.success(
+            f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)},  "
+        )
+        return templates.TemplateResponse(
+            "index.html",
+            {
+                "request": request,
+                "deploy": deployment_list,
+                "sts": sts_list,
+                "ds": ds_list,
+                "version": version,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error in status endpoint: {str(e)}")
+        return HTMLResponse(
+            content=f"<html><body><h1>Error</h1><p>An error occurred: {str(e)}</p></body></html>",
+            status_code=500
+        )
 
 
 # Run the application
