@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 import json
 from icecream import ic
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import sys
 import uvicorn
 import warnings
@@ -23,8 +23,18 @@ from scheduler_engine import SchedulerEngine
 from core.dbManager import DatabaseManager
 
 os.environ["TZ"] = "Europe/Paris"
-log_level = os.getenv("LOG_LEVEL", "INFO")
-ic(log_level)
+
+# Configure logging with environment variable
+# Valid options: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# Validate log level
+valid_log_levels = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
+if log_level not in valid_log_levels:
+    print(f"Invalid LOG_LEVEL: {log_level}. Using INFO as default.")
+    log_level = "INFO"
+
+# Configure logger
 logger.remove()
 logger.add(sys.stderr, level=log_level)
 
