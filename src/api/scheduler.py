@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from core.dbManager import DatabaseManager
 from core.models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from cron_validator import CronValidator
 from datetime import datetime
 
@@ -72,6 +72,37 @@ async def get_schedule_by_uid(uid: str) -> Optional[WorkloadSchedule]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def prepare_schedule_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Prépare les données de programmation en validant et nettoyant les expressions cron
+    et en convertissant les dates.
+    
+    Args:
+        data: Données de programmation brutes
+    Returns:
+        Données de programmation validées et nettoyées
+    Raises:
+        ValueError: Si une expression cron est invalide
+    """
+    if isinstance(data.get("last_update"), str):
+        try:
+            data["last_update"] = datetime.fromisoformat(data["last_update"].replace("Z", "+00:00"))
+        except ValueError:
+            data["last_update"] = datetime.utcnow()
+
+    if data.get("cron_start"):
+        data["cron_start"] = clean_cron_expression(data["cron_start"])
+        if not CronValidator.parse(data["cron_start"]):
+            raise ValueError(f"Invalid CRON expression in cron_start: {data['cron_start']}")
+
+    if data.get("cron_stop"):
+        data["cron_stop"] = clean_cron_expression(data["cron_stop"])
+        if not CronValidator.parse(data["cron_stop"]):
+            raise ValueError(f"Invalid CRON expression in cron_stop: {data['cron_stop']}")
+            
+    return data
+
+
 @scheduler.post(
     "/schedule",
     response_model=ScheduleResponse,
@@ -91,24 +122,9 @@ async def create_schedule(
     """
     try:
         data = schedule.model_dump()
-
-        if isinstance(data.get("last_update"), str):
-            try:
-                data["last_update"] = datetime.fromisoformat(data["last_update"].replace("Z", "+00:00"))
-            except ValueError:
-                data["last_update"] = datetime.utcnow()
-
-        if data.get("cron_start"):
-            data["cron_start"] = clean_cron_expression(data["cron_start"])
-            if not CronValidator.parse(data["cron_start"]):
-                raise ValueError(f"Invalid CRON expression in cron_start: {data['cron_start']}")
-
-        if data.get("cron_stop"):
-            data["cron_stop"] = clean_cron_expression(data["cron_stop"])
-            if not CronValidator.parse(data["cron_stop"]):
-                raise ValueError(f"Invalid CRON expression in cron_stop: {data['cron_stop']}")
-
-        await db_manager.store_schedule_status(data)
+        validated_data = prepare_schedule_data(data)
+        
+        await db_manager.store_schedule_status(validated_data)
         logger.success("POST /schedule - Created schedule")
         return {"status": "created", "detail": "Schedule created successfully"}
     except ValueError as ve:
@@ -118,6 +134,7 @@ async def create_schedule(
         logger.error(f"Error creating schedule: {e}")
         logger.error(f"Error type: {type(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @scheduler.put(
     "/schedules/{schedule_id}",
@@ -140,26 +157,11 @@ async def update_schedule_route(
     """
     try:
         data = schedule.model_dump()
-
-        if isinstance(data.get("last_update"), str):
-            try:
-                data["last_update"] = datetime.fromisoformat(data["last_update"].replace("Z", "+00:00"))
-            except ValueError:
-                data["last_update"] = datetime.utcnow()
-
-        if data.get("cron_start"):
-            data["cron_start"] = clean_cron_expression(data["cron_start"])
-            if not CronValidator.parse(data["cron_start"]):
-                raise ValueError(f"Invalid CRON expression in cron_start: {data['cron_start']}")
-
-        if data.get("cron_stop"):
-            data["cron_stop"] = clean_cron_expression(data["cron_stop"])
-            if not CronValidator.parse(data["cron_stop"]):
-                raise ValueError(f"Invalid CRON expression in cron_stop: {data['cron_stop']}")
-
-        updated_schedule = WorkloadSchedule(**data)
-
+        validated_data = prepare_schedule_data(data)
+        
+        updated_schedule = WorkloadSchedule(**validated_data)
         success = await db_manager.update_schedule(schedule_id, updated_schedule)
+        
         if not success:
             logger.warning(f"Schedule with ID {schedule_id} not found")
             raise HTTPException(status_code=404, detail="Schedule not found")
@@ -207,6 +209,7 @@ async def delete_schedule_route(
     except Exception as e:
         logger.error(f"Error deleting schedule with ID {schedule_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error deleting schedule: {str(e)}")
+
 
 @scheduler.put(
     "/schedule/{uid}/remove-crons",
