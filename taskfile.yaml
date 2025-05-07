@@ -40,6 +40,11 @@ tasks:
     cmds:
     - kubectl apply -f src/tests/deployment.yaml
 
+  apply-stateful:
+    desc: apply a deployment kubernetes
+    cmds:
+    - kubectl apply -f src/tests/stateful.yaml
+
   test-api:
     desc: run API unit tests
     cmds:
