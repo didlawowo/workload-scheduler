@@ -50,20 +50,6 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
                                 else {}
                             )
 
-                            # Get node conditions if available
-                            # node_conditions = {}
-                            # if pod.spec.node_name:
-                            #     try:
-                            #         node = core_v1.read_node(pod.spec.node_name)
-                            #         node_conditions = {
-                            #             cond.type: cond.status
-                            #             for cond in node.status.conditions
-                            #         }
-                            #     except client.exceptions.ApiException:
-                            #         logger.warning(
-                            #             f"Could not fetch conditions for node {pod.spec.node_name}"
-                            #         )
-
                             pod_info.append(
                                 {
                                     "name": pod.metadata.name,
@@ -73,13 +59,12 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
                                     "has_argocd": has_argocd,
                                     "resource_requests": requests,
                                     "resource_limits": limits,
-                                    "node_conditions": "",  # node_conditions,
+                                    "node_conditions": "",
                                     "start_time": pod.status.start_time.isoformat()
                                     if pod.status.start_time
                                     else None,
                                 }
                             )
-                            # logger.debug(pod_info)
                             break
 
             # Get DaemonSet-specific status
@@ -126,12 +111,9 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
 
         for d in deployment.items:
             # Skip if not matching our criteria
-            # ic(d.metadata)
             if (
                 d.metadata.name == "workload-scheduler"
-                # or d.metadata.labels is None
                 or d.metadata.namespace in protected_namespaces
-                # or "argocd.argoproj.io/instance" not in d.metadata.labels
             ):
                 continue
 
@@ -142,7 +124,7 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
                     [f"{k}={v}" for k, v in d.spec.selector.match_labels.items()]
                 ),
             )
-            # logger.debug(f"{len(replicasets.items)} replicasets found ")
+            
             # Find the active ReplicaSet(s)
             active_rs = []
             for rs in replicasets.items:
@@ -190,7 +172,7 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
                                 if resources and resources.limits
                                 else {}
                             )
-                            # ic(po)
+                            
                             pod_info.append(
                                 {
                                     "name": pod.metadata.name,
@@ -235,11 +217,16 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces):
         statfull_sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
         sts_list = []
         logger.debug(f"{len(statfull_sts.items)} sts found ")
+        
         for s in statfull_sts.items:
+            logger.debug(f"Examinant StatefulSet {s.metadata.name} dans namespace {s.metadata.namespace}")
+            logger.debug(f"Labels: {s.metadata.labels}")
+            logger.debug(f"ArgoCD label présent: {'argocd.argoproj.io/instance' in (s.metadata.labels or {})}")
+            
             if (
                 s.metadata.labels is not None
                 and s.metadata.namespace not in protected_namespaces
-                and "argocd.argoproj.io/instance" in s.metadata.labels
+                # and "argocd.argoproj.io/instance" in s.metadata.labels
             ):
                 # Get pod information
                 pods = core_v1.list_namespaced_pod(
@@ -306,7 +293,7 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces):
                     }
                 )
 
+        logger.info(f"Nombre total de StatefulSets trouvés après filtrage: {len(sts_list)}")
         return sts_list
     except client.exceptions.ApiException as e:
         return {"status": "error", "message": str(e)}
-

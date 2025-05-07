@@ -213,71 +213,89 @@
                         <td {% if d.available_replicas is none %}class="btn-danger">0{% else %}>{{ d.available_replicas }}{% endif %}</td>
 
                         <td>
-                            {% for pod in d.pods %}
-                            <div class="pod-details collapsed">
-                                <div class="status-line">
-                                    <span>
-                                        <strong>Status:</strong>
-                                        <span
-                                            style="color: {% if pod.status == 'Running' %}green{% else %}red{% endif %};">
-                                            {{ pod.status }}
+                            {% if d.pods %}
+                                {% for pod in d.pods %}
+                                <div class="pod-details collapsed">
+                                    <div class="status-line">
+                                        <span>
+                                            <strong>Status:</strong>
+                                            <span
+                                                style="color: {% if pod.status == 'Running' %}green{% else %}red{% endif %};">
+                                                {{ pod.status }}
+                                            </span>
                                         </span>
-                                    </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">
-                                        Show Details
-                                        {% if pod.has_pvc %}
-                                        <span style="margin-left: 5px;" title="Has PVC">💾</span>
-                                        {% endif %}
-                                        {% if pod.has_argocd %}
-                                        <span style="margin-left: 5px;" title="Connected to ArgoCD">⎈</span>
-                                        {% endif %}
-                                        {% if not pod.resource_requests or not pod.resource_limits %}
-                                        <span style="color: orange; margin-left: 5px;">⚠️</span>
-                                        {% endif %}
-                                      </button>
-                                </div>
-                                <div class="detailed-info">
-                                    <strong>Node:</strong> {{ pod.node }}<br>
-                                    <strong>Has PVC:</strong> {{ "Yes" if pod.has_pvc else 'No' }}<br>
-                                    <strong>Requests:</strong>
-                                    {% if pod.resource_requests %}
-                                    <ul style="margin: 0px 0; padding-left: 20px;">
-                                        {% for resource, value in pod.resource_requests.items() %}
-                                        <li>{{ resource }}: {{ value }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    {% else %}
-                                    <span style="color: orange"> Warning {% endif %}</span><br>
+                                        <button class="toggle-button" onclick="toggleWorkloadDetails(this)">
+                                            Show Details
+                                            {% if pod.has_pvc %}
+                                            <span style="margin-left: 5px;" title="Has PVC">💾</span>
+                                            {% endif %}
+                                            {% if pod.has_argocd %}
+                                            <span style="margin-left: 5px;" title="Connected to ArgoCD">⎈</span>
+                                            {% endif %}
+                                            {% if not pod.resource_requests or not pod.resource_limits %}
+                                            <span style="color: orange; margin-left: 5px;">⚠️</span>
+                                            {% endif %}
+                                        </button>
+                                    </div>
+                                    <div class="detailed-info">
+                                        <strong>Node:</strong> {{ pod.node }}<br>
+                                        <strong>Has PVC:</strong> {{ "Yes" if pod.has_pvc else 'No' }}<br>
+                                        <strong>Requests:</strong>
+                                        {% if pod.resource_requests %}
+                                        <ul style="margin: 0px 0; padding-left: 20px;">
+                                            {% for resource, value in pod.resource_requests.items() %}
+                                            <li>{{ resource }}: {{ value }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                        {% else %}
+                                        <span style="color: orange"> Warning {% endif %}</span><br>
 
-                                    <strong>Limits:</strong>
-                                    {% if pod.resource_limits %}
-                                    <ul style="margin: 0px 0; padding-left: 20px;">
-                                        {% for resource, value in pod.resource_limits.items() %}
-                                        <li>{{ resource }}: {{ value }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    {% else %}
-                                    <span style="color: orange"> Warning {% endif %}</span>
+                                        <strong>Limits:</strong>
+                                        {% if pod.resource_limits %}
+                                        <ul style="margin: 0px 0; padding-left: 20px;">
+                                            {% for resource, value in pod.resource_limits.items() %}
+                                            <li>{{ resource }}: {{ value }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                        {% else %}
+                                        <span style="color: orange"> Warning {% endif %}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            {% endfor %}
+                                {% endfor %}
+                            {% else %}
+                                <div class="pod-details collapsed">
+                                    <div class="status-line">
+                                        <span>
+                                            <strong>Status:</strong>
+                                            <span style="color: red;">
+                                                Shutdown
+                                            </span>
+                                        </span>
+                                        <button class="toggle-button" disabled>No Details</button>
+                                    </div>
+                                </div>
+                            {% endif %}
                         </td>
                         <td>
-                            {% if d.replicas is none or d.replicas == 0 %}
-                                <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.uid }}', 'up')"
-                                    class="btn btn-success">Start</button>
-                            {% else %}
-                                <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.uid }}', 'down')"
-                                    class="btn btn-danger">Shutdown</button>
-                            {% endif %}
-                            <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', 'sts')" class="btn btn-primary">
-                                <i class="material-icons">edit</i>
-                            </button>
+                            <div class="actions-container">
+                                {% if d.replicas is none or d.replicas == 0 %}
+                                    <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.uid }}', 'up')"
+                                        class="btn btn-success">Start</button>
+                                {% else %}
+                                    <button onclick="manageWorkloadStatus('sts', '{{ d.name }}', '{{ d.uid }}', 'down')"
+                                        class="btn btn-danger">Shutdown</button>
+                                {% endif %}
+                                <button onclick="edit_prog('{{ d.uid }}', '{{ d.name }}', 'sts')" class="btn btn-primary edit-btn">
+                                    <i class="material-icons">edit</i>
+                                </button>
+                            </div>
                         </td>
-                        <div class="cron-info">
-                            <div><strong>Start:</strong> {{ d.cron_start|default('Not set', true) }}</div>
-                            <div><strong>Stop:</strong> {{ d.cron_stop|default('Not set', true) }}</div>
-                        </div>
+                        <td>
+                            <div class="cron-info">
+                                <div><strong>Start:</strong> {{ d.cron_start|default('Not set', true) }}</div>
+                                <div><strong>Stop:</strong> {{ d.cron_stop|default('Not set', true) }}</div>
+                            </div>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -345,6 +363,7 @@
                 </tbody>
             </table>
         </div>
+</div>
 </body>
 <script src="{{ url_for('static', path='js/main.js') }}"></script>
 
