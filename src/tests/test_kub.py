@@ -382,7 +382,8 @@ def test_list_all_deployments():
     
     apps_v1.list_deployment_for_all_namespaces.return_value = deployments
     
-    with patch('kub_list.process_deployment') as mock_process:
+    # Here's the important change, using the correct module path:
+    with patch('core.kub_list.process_deployment') as mock_process:
         mock_process.return_value = {
             "namespace": "test-namespace",
             "name": "test-deployment",
@@ -532,7 +533,8 @@ def test_list_all_sts():
     
     apps_v1.list_stateful_set_for_all_namespaces.return_value = statefulsets
     
-    with patch('kub_list.process_statefulset') as mock_process:
+    # Here's the important change, using the correct module path:
+    with patch('core.kub_list.process_statefulset') as mock_process:
         mock_process.return_value = {
             "namespace": "test-namespace",
             "name": "test-statefulset",
