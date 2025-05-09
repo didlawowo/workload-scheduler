@@ -40,6 +40,11 @@ tasks:
     cmds:
     - kubectl apply -f src/tests/deployment.yaml
 
+  apply-stateful:
+    desc: apply a deployment kubernetes
+    cmds:
+    - kubectl apply -f src/tests/stateful.yaml
+
   delete-deployment:
     desc: delete a deployment kubernetes
     cmds:
@@ -77,9 +82,13 @@ tasks:
     cmds:
     - coverage run -m pytest src/tests/test_argocd.py
     - coverage report -m
-  # TODO add lib dep requirements.txt
 
-default:
-  desc: List available tasks
-  cmds:
-  - task --list
+  install-dep:
+    desc: instell all dependences in requirements.txt
+    cmds:
+    - uv pip install -r requirements.txt
+
+  default:
+    desc: List available tasks
+    cmds:
+    - task --list
