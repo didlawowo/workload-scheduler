@@ -223,8 +223,7 @@ def meets_sts_criteria(statefulset, protected_namespaces):
     Vérifie si un StatefulSet répond aux critères de sélection.
     """
     return (statefulset.metadata.labels is not None and
-            statefulset.metadata.namespace not in protected_namespaces and
-            "argocd.argoproj.io/instance" in statefulset.metadata.labels)
+            statefulset.metadata.namespace not in protected_namespaces)
 
 def process_statefulset(statefulset, core_v1):
     """
