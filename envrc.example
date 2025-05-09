@@ -1,0 +1,8 @@
+export KUBE_ENV=development
+export APP_ENV=development
+export API_URL=http://localhost:8080
+export ARGOCD_API_URL=http://my-argocd-my-example.com:8080/api/v1
+export ARGOCD_USERNAME=admin
+export ARGOCD_PASSWORD=password
+export TEST_WRIGHT=true
+export JWT_SECRET_KEY=my_secret_key
