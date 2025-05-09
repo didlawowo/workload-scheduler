@@ -2,11 +2,13 @@ from fastapi import APIRouter
 from kubernetes import client
 from loguru import logger
 from typing import Any, Dict
+from utils.argocd import handle_argocd_auto_sync
 from utils.config import protected_namespaces
 from utils.helpers import core_v1, apps_v1
 from core.dbManager import DatabaseManager
 from pydantic import BaseModel
 from icecream import ic
+import os
 
 class PodStatus(BaseModel):
     name: str
