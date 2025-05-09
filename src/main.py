@@ -9,20 +9,32 @@ from fastapi.staticfiles import StaticFiles
 import json
 from icecream import ic
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import sys
 import uvicorn
 import warnings
 from api.scheduler import scheduler
 from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
+from utils.argocd import ArgoTokenManager
 from utils.config import protected_namespaces
 from utils.helpers import apps_v1, core_v1
 from scheduler_engine import SchedulerEngine
 from core.dbManager import DatabaseManager
 
 os.environ["TZ"] = "Europe/Paris"
-log_level = os.getenv("LOG_LEVEL", "INFO")
+
+# Configure logging with environment variable
+# Valid options: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# Validate log level
+valid_log_levels = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
+if log_level not in valid_log_levels:
+    print(f"Invalid LOG_LEVEL: {log_level}. Using INFO as default.")
+    log_level = "INFO"
+
+# Configure logger
 logger.remove()
 logger.add(sys.stderr, level=log_level)
 
@@ -112,8 +124,24 @@ templates = Jinja2Templates(directory=templates_dir)
 class Workloads(BaseModel):
     workloads: List[str]
 
+token_manager = ArgoTokenManager()
 
-# argo_session_token = get_argocd_session_token()
+async def init_argocd_token():
+    """Initialise le token ArgoCD global avec gestion d'erreur"""
+    if os.getenv("ARGOCD_API_URL"):
+        try:
+            logger.info("Initializing ArgoCD session token...")
+            token = token_manager.get_token()
+            
+            if not token:
+                logger.error("Failed to obtain ArgoCD token. Check credentials or ArgoCD server availability.")
+
+            logger.success("ArgoCD session token initialized.")
+        except Exception as e:
+            logger.error(f"Error initializing ArgoCD token: {str(e)}")
+            logger.warning("ArgoCD integration will not be available.")
+    else:
+        logger.warning("ARGOCD_API_URL not set, skipping token initialization")
 
 # Déterminer l'environnement (développement ou production)
 is_dev = os.environ.get("APP_ENV", "development").lower() == "development"
@@ -174,6 +202,7 @@ def status(request: Request):
 async def main():
     logger.info("🚀 Application starting.")
     await init_database()
+    await init_argocd_token()
 
 if __name__ == "__main__":
     if platform.system() == "Darwin":

@@ -77,3 +77,4 @@ websockets==15.0.1
 Werkzeug==3.0.6
 yggdrasil-engine==0.1.4
 zipp==3.21.0
+PyJWT==2.10.1

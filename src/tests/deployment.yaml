@@ -4,6 +4,7 @@ metadata:
   name: guestbook-ui
   labels:
     app: guestbook-ui
+    argocd.argoproj.io/instance: guestbook
 spec:
   replicas: 1
   revisionHistoryLimit: 3
