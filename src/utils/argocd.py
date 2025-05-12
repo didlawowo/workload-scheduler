@@ -3,6 +3,7 @@ import requests
 import json
 from loguru import logger
 import os
+import sys
 from icecream import ic
 from jwt import encode as jwt_encode, decode as jwt_decode
 
@@ -22,8 +23,14 @@ class ArgoTokenManager:
     def get_token(self, force_refresh=False):
         if not self.token or force_refresh:
             self.token = self._authenticate()
+            if not self.token:
+                logger.error("Failed to authenticate with ArgoCD. Exiting program.")
+                sys.exit(1)  # Stop program if authentication fails
         else:
             self.token = self._verify_token(self.token)
+            if not self.token:
+                logger.error("Token verification failed. Could not connect to ArgoCD. Exiting program.")
+                sys.exit(1)  # Stop program if token verification fails
         return self.token
     
     def _authenticate(self):
@@ -108,8 +115,12 @@ class ArgoTokenManager:
                 return self._authenticate()
                 
             secret_key = os.getenv("JWT_SECRET_KEY", "Wx7KpLzJ5q3RbT9dN8fEyU2mA6vH4cGQ")
-            self._verify_signature(token, secret_key)
+            is_valid = self._verify_signature(token, secret_key)
             
+            if not is_valid:
+                logger.warning("Token signature verification failed, getting new token")
+                return self._authenticate()
+                
             return token
         except Exception as e:
             logger.error(f"Error verifying token: {e}")
@@ -136,8 +147,9 @@ def enable_auto_sync(application_name):
         )
         
         if res.status_code != 200:
-            logger.warning(f"ArgoCD application '{application_name}' not found or API error: {res.status_code}")
-            return
+            logger.error(f"ArgoCD application '{application_name}' not found or API error: {res.status_code}")
+            logger.error("ArgoCD application not found. Exiting program.")
+            sys.exit(1)  # Stop program if application not found
             
         app_config = res.json()
         
@@ -157,6 +169,8 @@ def enable_auto_sync(application_name):
         )
     except Exception as e:
         logger.error(f"Error enabling auto-sync for application '{application_name}': {e}")
+        logger.error("Failed to connect to ArgoCD. Exiting program.")
+        sys.exit(1)  # Stop program on exception
 
 def patch_argocd_application(app_name, enable_auto_sync):
     """
@@ -165,40 +179,66 @@ def patch_argocd_application(app_name, enable_auto_sync):
     token_manager = ArgoTokenManager()
     token = token_manager.get_token()
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    res = requests.get(
-        f"{token_manager.ARGOCD_API_URL}/applications/{app_name}", headers=headers, timeout=3
-    )
-    app_config = res.json()
-    logger.debug(app_config["spec"])
     
-    if enable_auto_sync:
-        logger.info("disabling auto sync")
-        app_config["spec"]["syncPolicy"]["automated"] = None
-        logger.debug(app_config["spec"])
-    if not enable_auto_sync:
-        logger.info("enabling auto sync")
-        app_config["spec"]["syncPolicy"]["automated"] = {
-            "prune": True,
-            "selfHeal": True,
-        }
-
-    logger.info(f" app name {app_name}")
-
-    response = requests.put(
-        f"{token_manager.ARGOCD_API_URL}/applications/{app_name}?validate=false",
-        headers=headers,
-        data=json.dumps(app_config),
-        timeout=10,
-    )
-
-    if response.status_code == 200:
-        logger.success("Application patched successfully.")
-    else:
-        logger.error(
-            f"Failed to patch the application. Status code: {response.status_code}, Response: {response.text}"
+    try:
+        res = requests.get(
+            f"{token_manager.ARGOCD_API_URL}/applications/{app_name}", headers=headers, timeout=3
         )
-    
-    res = requests.get(
-        f"{token_manager.ARGOCD_API_URL}/applications/{app_name}", headers=headers, timeout=5
-    )
-    logger.info(f"policy {res.json()['spec']['syncPolicy']}")
+        
+        if res.status_code != 200:
+            logger.error(f"Failed to fetch application '{app_name}'. Status code: {res.status_code}")
+            logger.error("ArgoCD application not found. Exiting program.")
+            sys.exit(1)  # Stop program if application not found
+            
+        app_config = res.json()
+        logger.debug(app_config["spec"])
+        
+        if enable_auto_sync:
+            logger.info("disabling auto sync")
+            app_config["spec"]["syncPolicy"]["automated"] = None
+            logger.debug(app_config["spec"])
+        if not enable_auto_sync:
+            logger.info("enabling auto sync")
+            app_config["spec"]["syncPolicy"]["automated"] = {
+                "prune": True,
+                "selfHeal": True,
+            }
+
+        logger.info(f" app name {app_name}")
+
+        response = requests.put(
+            f"{token_manager.ARGOCD_API_URL}/applications/{app_name}?validate=false",
+            headers=headers,
+            data=json.dumps(app_config),
+            timeout=10,
+        )
+
+        if response.status_code == 200:
+            logger.success("Application patched successfully.")
+        else:
+            logger.error(
+                f"Failed to patch the application. Status code: {response.status_code}, Response: {response.text}"
+            )
+            logger.error("Failed to patch ArgoCD application. Exiting program.")
+            sys.exit(1)  # Stop program if patching fails
+        
+        # Verify the patch worked
+        res = requests.get(
+            f"{token_manager.ARGOCD_API_URL}/applications/{app_name}", headers=headers, timeout=5
+        )
+        
+        if res.status_code != 200:
+            logger.error(f"Failed to verify patch for application '{app_name}'. Status code: {res.status_code}")
+            logger.error("Failed to verify ArgoCD application patch. Exiting program.")
+            sys.exit(1)  # Stop program if verification fails
+            
+        logger.info(f"policy {res.json()['spec']['syncPolicy']}")
+        
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error while patching application: {e}")
+        logger.error("Failed to connect to ArgoCD. Exiting program.")
+        sys.exit(1)  # Stop program on network error
+    except Exception as e:
+        logger.error(f"Unexpected error while patching application: {e}")
+        logger.error("Error processing ArgoCD application. Exiting program.")
+        sys.exit(1)  # Stop program on unexpected error
