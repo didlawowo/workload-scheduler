@@ -221,9 +221,14 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces):
 def meets_sts_criteria(statefulset, protected_namespaces):
     """
     Vérifie si un StatefulSet répond aux critères de sélection.
+    Criteria:
+    - Must have labels
+    - Must not be in protected namespaces
+    - Must have the "argocd.argoproj.io/instance" label
     """
     return (statefulset.metadata.labels is not None and
-            statefulset.metadata.namespace not in protected_namespaces)
+            statefulset.metadata.namespace not in protected_namespaces and
+            "argocd.argoproj.io/instance" in statefulset.metadata.labels)
 
 def process_statefulset(statefulset, core_v1):
     """
