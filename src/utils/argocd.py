@@ -147,8 +147,7 @@ def enable_auto_sync(application_name):
         )
         
         if res.status_code != 200:
-            logger.error(f"ArgoCD application '{application_name}' not found or API error: {res.status_code}")
-            logger.error("ArgoCD application not found. Exiting program.")
+            logger.error(f"ArgoCD application '{application_name}' not found or API error: {res.status_code}. Exiting program")
             sys.exit(1)  # Stop program if application not found
             
         app_config = res.json()
@@ -168,8 +167,7 @@ def enable_auto_sync(application_name):
             f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
         )
     except Exception as e:
-        logger.error(f"Error enabling auto-sync for application '{application_name}': {e}")
-        logger.error("Failed to connect to ArgoCD. Exiting program.")
+        logger.error(f"Error enabling auto-sync for application '{application_name}': {e}. Exiting program.")
         sys.exit(1)  # Stop program on exception
 
 def patch_argocd_application(app_name, enable_auto_sync):
@@ -186,8 +184,7 @@ def patch_argocd_application(app_name, enable_auto_sync):
         )
         
         if res.status_code != 200:
-            logger.error(f"Failed to fetch application '{app_name}'. Status code: {res.status_code}")
-            logger.error("ArgoCD application not found. Exiting program.")
+            logger.error(f"Failed to fetch application '{app_name}'. Status code: {res.status_code}. Exiting program.")
             sys.exit(1)  # Stop program if application not found
             
         app_config = res.json()
@@ -217,9 +214,8 @@ def patch_argocd_application(app_name, enable_auto_sync):
             logger.success("Application patched successfully.")
         else:
             logger.error(
-                f"Failed to patch the application. Status code: {response.status_code}, Response: {response.text}"
+                f"Failed to patch the application. Status code: {response.status_code}, Response: {response.text}. Exiting program."
             )
-            logger.error("Failed to patch ArgoCD application. Exiting program.")
             sys.exit(1)  # Stop program if patching fails
         
         # Verify the patch worked
@@ -228,17 +224,14 @@ def patch_argocd_application(app_name, enable_auto_sync):
         )
         
         if res.status_code != 200:
-            logger.error(f"Failed to verify patch for application '{app_name}'. Status code: {res.status_code}")
-            logger.error("Failed to verify ArgoCD application patch. Exiting program.")
+            logger.error(f"Failed to verify patch for application '{app_name}'. Status code: {res.status_code}. Exiting program.")
             sys.exit(1)  # Stop program if verification fails
             
         logger.info(f"policy {res.json()['spec']['syncPolicy']}")
         
     except requests.exceptions.RequestException as e:
-        logger.error(f"Network error while patching application: {e}")
-        logger.error("Failed to connect to ArgoCD. Exiting program.")
+        logger.error(f"Network error while patching application: {e}. Exiting program.")
         sys.exit(1)  # Stop program on network error
     except Exception as e:
-        logger.error(f"Unexpected error while patching application: {e}")
-        logger.error("Error processing ArgoCD application. Exiting program.")
+        logger.error(f"Unexpected error while patching application: {e}. Exiting program.")
         sys.exit(1)  # Stop program on unexpected error
