@@ -1,5 +1,6 @@
 from kubernetes import client
 from loguru import logger
+from icecream import ic
 
 def get_pod_details(pod, owner_type="DaemonSet", owner_name=None, owner_uid=None):
     """
@@ -75,7 +76,7 @@ def find_active_replicasets(replicasets, deployment_name):
     active_rs.sort(key=lambda x: x.metadata.creation_timestamp, reverse=True)
     return active_rs
 
-def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
+def list_all_daemonsets(apps_v1, core_v1, protected_namespaces, protected_labels):
     """
     Returns the status of all DaemonSets in all namespaces, including pod information.
     """
@@ -86,7 +87,15 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces):
         daemonset_list = []
 
         for ds in daemonsets.items:
-            if ds.metadata.labels is None or ds.metadata.namespace in protected_namespaces:
+            should_skip = ds.metadata.labels is None or ds.metadata.namespace in protected_namespaces
+            
+            if not should_skip and ds.metadata.labels:
+                for key, value in protected_labels.items():
+                    if key in ds.metadata.labels and ds.metadata.labels[key] == value:
+                        should_skip = True
+                        break
+            
+            if should_skip:
                 logger.debug(f"Skipping DaemonSet {ds.metadata.name} in namespace {ds.metadata.namespace}")
                 continue
 
@@ -132,7 +141,7 @@ def create_daemonset_info(ds, status, pod_info):
         "selector": ds.spec.selector.match_labels,
     }
 
-def list_all_deployments(apps_v1, core_v1, protected_namespaces):
+def list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_labels):
     """
     Returns the status of all Deployments in all namespaces, including pod information.
     """
@@ -141,21 +150,29 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces):
         deployments = apps_v1.list_deployment_for_all_namespaces(watch=False)
         logger.debug(f"{len(deployments.items)} deployments found")
         deployment_list = []
-
         for d in deployments.items:
             # Skip if not matching our criteria
-            if (d.metadata.name == "workload-scheduler" or 
-                d.metadata.namespace in protected_namespaces):
+            ic(d.metadata.labels)
+            
+            should_skip = False
+            if d.metadata.name == "workload-scheduler" or d.metadata.namespace in protected_namespaces:
+                should_skip = True
+            elif d.metadata.labels:
+                for key, value in protected_labels.items():
+                    if key in d.metadata.labels and d.metadata.labels[key] == value:
+                        should_skip = True
+                        break
+            
+            if should_skip:
                 logger.debug(f"Skipping Deployment {d.metadata.name} in namespace {d.metadata.namespace}")
                 continue
-
+                
             logger.debug(f"Processing Deployment {d.metadata.name} in namespace {d.metadata.namespace}")
             deployment_info = process_deployment(d, apps_v1, core_v1)
             deployment_list.append(deployment_info)
-
+        
         logger.info(f"Processed {len(deployment_list)} Deployments after filtering")
         return deployment_list
-
     except client.exceptions.ApiException as e:
         logger.error("Error fetching deployments: %s", e)
         return {"status": "error", "message": str(e)}
@@ -192,7 +209,7 @@ def process_deployment(deployment, apps_v1, core_v1):
         "pods": pod_info,
     }
 
-def list_all_sts(apps_v1, core_v1, protected_namespaces):
+def list_all_sts(apps_v1, core_v1, protected_namespaces, protected_labels):
     """
     Returns the status of all StatefulSets in all namespaces.
     """
@@ -203,7 +220,7 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces):
         sts_list = []
 
         for s in statfull_sts.items:
-            if not meets_sts_criteria(s, protected_namespaces):
+            if not meets_sts_criteria(s, protected_namespaces, protected_labels):
                 logger.debug(f"Skipping StatefulSet {s.metadata.name} in namespace {s.metadata.namespace}")
                 continue
                 
@@ -218,12 +235,21 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces):
         logger.error(f"Error fetching StatefulSets: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-def meets_sts_criteria(statefulset, protected_namespaces):
+def meets_sts_criteria(statefulset, protected_namespaces, protected_labels):
     """
     Vérifie si un StatefulSet répond aux critères de sélection.
     """
-    return (statefulset.metadata.labels is not None and
-            statefulset.metadata.namespace not in protected_namespaces)
+    if statefulset.metadata.labels is None or statefulset.metadata.namespace in protected_namespaces:
+        return False
+        
+    if "argocd.argoproj.io/instance" not in statefulset.metadata.labels:
+        return False
+        
+    for key, value in protected_labels.items():
+        if key in statefulset.metadata.labels and statefulset.metadata.labels[key] == value:
+            return False
+            
+    return True
 
 def process_statefulset(statefulset, core_v1):
     """

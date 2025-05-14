@@ -18,6 +18,10 @@ from core.kub_list import (
     process_statefulset
 )
 
+protected_labels = {
+    "app.kubernetes.io/part-of": "argocd"
+}
+
 
 @pytest.fixture
 def mock_pod():
@@ -274,7 +278,7 @@ def test_list_all_daemonsets():
     
     core_v1.list_namespaced_pod.return_value = pods
     
-    result = list_all_daemonsets(apps_v1, core_v1, ["kube-system"])
+    result = list_all_daemonsets(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert len(result) == 1
     assert result[0]["name"] == "test-daemonset"
@@ -299,7 +303,7 @@ def test_list_all_daemonsets_skip_protected():
     
     apps_v1.list_daemon_set_for_all_namespaces.return_value = daemonsets
     
-    result = list_all_daemonsets(apps_v1, core_v1, ["kube-system"])
+    result = list_all_daemonsets(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert len(result) == 0
     
@@ -315,7 +319,7 @@ def test_list_all_daemonsets_api_exception():
     from kubernetes.client.exceptions import ApiException
     apps_v1.list_daemon_set_for_all_namespaces.side_effect = ApiException("API Error")
     
-    result = list_all_daemonsets(apps_v1, core_v1, ["kube-system"])
+    result = list_all_daemonsets(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert "status" in result
     assert result["status"] == "error"
@@ -394,7 +398,7 @@ def test_list_all_deployments():
             "pods": []
         }
         
-        result = list_all_deployments(apps_v1, core_v1, ["kube-system"])
+        result = list_all_deployments(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert len(result) == 1
     assert result[0]["name"] == "test-deployment"
@@ -418,7 +422,7 @@ def test_list_all_deployments_skip_protected():
     
     apps_v1.list_deployment_for_all_namespaces.return_value = deployments
     
-    result = list_all_deployments(apps_v1, core_v1, ["kube-system"])
+    result = list_all_deployments(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert len(result) == 0
     
@@ -439,7 +443,7 @@ def test_list_all_deployments_skip_workload_scheduler():
     
     apps_v1.list_deployment_for_all_namespaces.return_value = deployments
     
-    result = list_all_deployments(apps_v1, core_v1, ["kube-system"])
+    result = list_all_deployments(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert len(result) == 0
     
@@ -454,7 +458,7 @@ def test_list_all_deployments_api_exception():
     from kubernetes.client.exceptions import ApiException
     apps_v1.list_deployment_for_all_namespaces.side_effect = ApiException("API Error")
     
-    result = list_all_deployments(apps_v1, core_v1, ["kube-system"])
+    result = list_all_deployments(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert "status" in result
     assert result["status"] == "error"
@@ -464,23 +468,23 @@ def test_list_all_deployments_api_exception():
 
 def test_meets_sts_criteria(mock_statefulset):
     """Test de meets_sts_criteria"""
-    result = meets_sts_criteria(mock_statefulset, ["kube-system"])
+    result = meets_sts_criteria(mock_statefulset, ["kube-system"], protected_labels)
     
     assert result is True
     
     mock_statefulset.metadata.namespace = "kube-system"
-    result = meets_sts_criteria(mock_statefulset, ["kube-system"])
+    result = meets_sts_criteria(mock_statefulset, ["kube-system"], protected_labels)
     
     assert result is False
     
     mock_statefulset.metadata.namespace = "test-namespace"
     mock_statefulset.metadata.labels = {"app": "test-app"}
-    result = meets_sts_criteria(mock_statefulset, ["kube-system"])
+    result = meets_sts_criteria(mock_statefulset, ["kube-system"], protected_labels)
     
     assert result is False
     
     mock_statefulset.metadata.labels = None
-    result = meets_sts_criteria(mock_statefulset, ["kube-system"])
+    result = meets_sts_criteria(mock_statefulset, ["kube-system"], protected_labels)
     
     assert result is False
 
@@ -547,7 +551,7 @@ def test_list_all_sts():
             "pods": []
         }
         
-        result = list_all_sts(apps_v1, core_v1, ["kube-system"])
+        result = list_all_sts(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert len(result) == 1
     assert result[0]["name"] == "test-statefulset"
@@ -572,7 +576,7 @@ def test_list_all_sts_skip_no_label():
     
     apps_v1.list_stateful_set_for_all_namespaces.return_value = statefulsets
     
-    result = list_all_sts(apps_v1, core_v1, ["kube-system"])
+    result = list_all_sts(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert len(result) == 0
     
@@ -587,7 +591,7 @@ def test_list_all_sts_api_exception():
     from kubernetes.client.exceptions import ApiException
     apps_v1.list_stateful_set_for_all_namespaces.side_effect = ApiException("API Error")
     
-    result = list_all_sts(apps_v1, core_v1, ["kube-system"])
+    result = list_all_sts(apps_v1, core_v1, ["kube-system"], protected_labels)
     
     assert "status" in result
     assert result["status"] == "error"

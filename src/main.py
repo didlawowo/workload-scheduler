@@ -17,7 +17,7 @@ from api.scheduler import scheduler
 from api.workload import workload, health_route
 from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
 from utils.argocd import ArgoTokenManager
-from utils.config import protected_namespaces
+from utils.config import protected_namespaces, protected_labels
 from utils.helpers import apps_v1, core_v1
 from scheduler_engine import SchedulerEngine
 from core.dbManager import DatabaseManager
@@ -154,9 +154,9 @@ async def init_database():
         await db.create_table()
         logger.success("Database created and tables initialized.")
         
-        deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
-        sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
-        ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
+        deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_labels)
+        sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces, protected_labels)
+        ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces, protected_labels)
         
         logger.success(
             f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)}"
@@ -181,9 +181,9 @@ def status(request: Request):
     """
     try:
         logger.info("Fetching Deployments, Daemonets and StatefulSets...")
-        deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces)
-        sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces)
-        ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces)
+        deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_labels)
+        sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces, protected_labels)
+        ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces, protected_labels)
         
         logger.success(
             f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)},  "
