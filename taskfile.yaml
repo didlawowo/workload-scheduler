@@ -23,7 +23,13 @@ tasks:
     desc: Run the app localy
     dir: src
     cmds:
-    - pipenv run python main.py && pipenv run python scheduler_engine.py
+    - pipenv run python main.py
+  
+  run-scheduler:
+    desc: Run the scheduler localy
+    dir: src
+    cmds:
+    - pipenv run python scheduler_engine.py
 
   shell:
     desc: Open a shell from virtual env
@@ -81,6 +87,12 @@ tasks:
     desc: run argocd tests with code coverage
     cmds:
     - coverage run -m pytest src/tests/test_argocd.py
+    - coverage report -m
+
+  coverage-scheduler:
+    desc: run scheduler tests with code coverage
+    cmds:
+    - coverage run -m pytest src/tests/test_scheduler.py
     - coverage report -m
 
   install-dep:
