@@ -1,0 +1,162 @@
+name: SonarQube Analysis & Report
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Run tests with tox
+        run: |
+          tox -e py || true
+      
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          
+      - name: Generate SonarQube Report
+        id: sonar-report
+        run: |
+          sleep 10
+          
+          PROJECT_KEY="didlawowo_workload-scheduler"
+          SONAR_URL="https://sonarcloud.io/api/measures/component?component=${PROJECT_KEY}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,security_rating,reliability_rating,maintainability_rating"
+          
+          echo "Récupération des métriques SonarCloud..."
+          RESPONSE=$(curl -s "$SONAR_URL")
+          
+          echo "Création du rapport..."
+          echo "## Rapport d'analyse SonarQube - $(date '+%Y-%m-%d %H:%M:%S')" > sonar-report.md
+          echo "Pour le projet: $PROJECT_KEY" >> sonar-report.md
+          echo "" >> sonar-report.md
+          echo "### Résumé des métriques" >> sonar-report.md
+          echo "" >> sonar-report.md
+          echo "| Métrique | Valeur |" >> sonar-report.md
+          echo "|----------|--------|" >> sonar-report.md
+          
+          BUGS=$(echo $RESPONSE | jq -r '.component.measures[] | select(.metric=="bugs") | .value')
+          VULNS=$(echo $RESPONSE | jq -r '.component.measures[] | select(.metric=="vulnerabilities") | .value')
+          CODE_SMELLS=$(echo $RESPONSE | jq -r '.component.measures[] | select(.metric=="code_smells") | .value')
+          COVERAGE=$(echo $RESPONSE | jq -r '.component.measures[] | select(.metric=="coverage") | .value')
+          DUPLICATION=$(echo $RESPONSE | jq -r '.component.measures[] | select(.metric=="duplicated_lines_density") | .value')
+          SECURITY=$(echo $RESPONSE | jq -r '.component.measures[] | select(.metric=="security_rating") | .value')
+          RELIABILITY=$(echo $RESPONSE | jq -r '.component.measures[] | select(.metric=="reliability_rating") | .value')
+          MAINTAINABILITY=$(echo $RESPONSE | jq -r '.component.measures[] | select(.metric=="maintainability_rating") | .value')
+          
+          convert_rating() {
+            case "$1" in
+              "1") echo "A" ;;
+              "2") echo "B" ;;
+              "3") echo "C" ;;
+              "4") echo "D" ;;
+              "5") echo "E" ;;
+              *) echo "$1" ;;
+            esac
+          }
+          
+          SECURITY_GRADE=$(convert_rating $SECURITY)
+          RELIABILITY_GRADE=$(convert_rating $RELIABILITY)
+          MAINTAINABILITY_GRADE=$(convert_rating $MAINTAINABILITY)
+          
+          echo "| Bugs | $BUGS |" >> sonar-report.md
+          echo "| Vulnérabilités | $VULNS |" >> sonar-report.md
+          echo "| Code Smells | $CODE_SMELLS |" >> sonar-report.md
+          echo "| Couverture | $COVERAGE% |" >> sonar-report.md
+          echo "| Duplication | $DUPLICATION% |" >> sonar-report.md
+          echo "| Note Sécurité | $SECURITY_GRADE |" >> sonar-report.md
+          echo "| Note Fiabilité | $RELIABILITY_GRADE |" >> sonar-report.md
+          echo "| Note Maintenabilité | $MAINTAINABILITY_GRADE |" >> sonar-report.md
+          
+          echo "" >> sonar-report.md
+          echo "### Lien vers le rapport complet" >> sonar-report.md
+          echo "" >> sonar-report.md
+          echo "[Voir le rapport complet sur SonarCloud](https://sonarcloud.io/dashboard?id=${PROJECT_KEY})" >> sonar-report.md
+          
+          cat sonar-report.md
+          
+      - name: Find Pull Request
+        if: github.event_name == 'pull_request'
+        uses: jwalton/gh-find-current-pr@v1
+        id: find-pr
+        with:
+          state: open
+          
+      - name: Comment PR with SonarQube Report
+        if: github.event_name == 'pull_request' && steps.find-pr.outputs.number
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('sonar-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: ${{ steps.find-pr.outputs.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+            
+      - name: Create/Update SonarQube Report as Check
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('sonar-report.md', 'utf8');
+            
+            // Pour les PR, le rapport sera commenté
+            // Pour les push sur main, créer une issue ou mettre à jour une existante
+            if (context.eventName === 'push' && context.ref === 'refs/heads/main') {
+              // Chercher si une issue de rapport SonarQube existe déjà
+              const issues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: 'sonarqube-report',
+                state: 'open'
+              });
+              
+              if (issues.data.length > 0) {
+                // Mettre à jour l'issue existante
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issues.data[0].number,
+                  body: report
+                });
+                console.log(`Issue SonarQube mise à jour: #${issues.data[0].number}`);
+              } else {
+                // Créer une nouvelle issue
+                const newIssue = await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: 'Rapport d\'analyse SonarQube',
+                  body: report,
+                  labels: ['sonarqube-report']
+                });
+                console.log(`Nouvelle issue SonarQube créée: #${newIssue.data.number}`);
+              }
+            }

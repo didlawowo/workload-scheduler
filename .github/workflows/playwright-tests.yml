@@ -1,0 +1,294 @@
+name: Playwright E2E Tests & Report
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm ci
+          
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+          
+      - name: Run Playwright tests
+        run: npx playwright test
+        
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+          
+      - name: Generate HTML Test Report
+        if: always()
+        run: |
+          # Créer un rapport HTML à partir des résultats
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Rapport de tests Playwright</title>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; color: #333; }
+              .container { max-width: 1200px; margin: 0 auto; }
+              h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+              .summary { background: #f8f9fa; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
+              .test-results { margin-top: 20px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+              th { background-color: #f8f9fa; }
+              tr:hover { background-color: #f5f5f5; }
+              .passed { color: #27ae60; }
+              .failed { color: #e74c3c; }
+              .skipped { color: #f39c12; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>Rapport de tests Playwright</h1>
+              <div class="summary">
+                <h2>Résumé</h2>
+                <p><strong>Date d'\''exécution:</strong> $(date "+%d/%m/%Y %H:%M:%S")</p>
+                <p><strong>Commit:</strong> ${{ github.sha }}</p>
+                <p><strong>Branch/PR:</strong> ${{ github.ref_name }}</p>
+              </div>
+              
+              <div class="test-results">
+                <h2>Résultats des tests</h2>' > test-report.html
+                
+          if [ -d "playwright-report" ] && [ -f "playwright-report/results.json" ]; then
+            RESULTS=$(cat playwright-report/results.json)
+            TOTAL=$(echo "$RESULTS" | grep -o '"total":[^,}]*' | cut -d ":" -f2)
+            PASSED=$(echo "$RESULTS" | grep -o '"passed":[^,}]*' | cut -d ":" -f2)
+            FAILED=$(echo "$RESULTS" | grep -o '"failed":[^,}]*' | cut -d ":" -f2)
+            FLAKY=$(echo "$RESULTS" | grep -o '"flaky":[^,}]*' | cut -d ":" -f2)
+            SKIPPED=$(echo "$RESULTS" | grep -o '"skipped":[^,}]*' | cut -d ":" -f2)
+            
+            echo "<p><strong>Tests totaux:</strong> $TOTAL</p>" >> test-report.html
+            echo "<p><strong>Tests réussis:</strong> <span class='passed'>$PASSED</span></p>" >> test-report.html
+            echo "<p><strong>Tests échoués:</strong> <span class='failed'>$FAILED</span></p>" >> test-report.html
+            echo "<p><strong>Tests instables:</strong> <span class='skipped'>$FLAKY</span></p>" >> test-report.html
+            echo "<p><strong>Tests ignorés:</strong> <span class='skipped'>$SKIPPED</span></p>" >> test-report.html
+            
+            echo "<table>
+              <thead>
+                <tr>
+                  <th>Test</th>
+                  <th>Statut</th>
+                  <th>Durée</th>
+                </tr>
+              </thead>
+              <tbody>" >> test-report.html
+              
+            # Extraire les infos de chaque test (ceci est une approximation, vous devrez peut-être ajuster)
+            node -e "
+              const fs = require('fs');
+              const results = JSON.parse(fs.readFileSync('playwright-report/results.json', 'utf8'));
+              let testRows = '';
+              
+              results.suites.forEach(suite => {
+                function processSpecs(specs, suiteName = '') {
+                  specs.forEach(spec => {
+                    if (spec.suites) {
+                      processSpecs(spec.suites, (suiteName + ' > ' + spec.title).trim());
+                    }
+                    if (spec.specs) {
+                      processSpecs(spec.specs, (suiteName + ' > ' + spec.title).trim());
+                    }
+                    if (spec.tests) {
+                      spec.tests.forEach(test => {
+                        const fullTitle = (suiteName + ' > ' + test.title).trim();
+                        let status = 'N/A';
+                        let statusClass = '';
+                        
+                        if (test.results && test.results.length > 0) {
+                          const result = test.results[0];
+                          status = result.status;
+                          statusClass = status === 'passed' ? 'passed' : 
+                                      status === 'failed' ? 'failed' : 'skipped';
+                        }
+                        
+                        const durationMs = test.results && test.results.length > 0 ? 
+                          Math.round(test.results[0].duration) : 0;
+                        
+                        testRows += \`<tr>
+                          <td>\${fullTitle}</td>
+                          <td class='\${statusClass}'>\${status}</td>
+                          <td>\${durationMs} ms</td>
+                        </tr>\`;
+                      });
+                    }
+                  });
+                }
+                
+                if (suite.specs) processSpecs(suite.specs, suite.title);
+              });
+              
+              fs.appendFileSync('test-report.html', testRows);
+            "
+            
+            echo "</tbody>
+              </table>" >> test-report.html
+          else
+            echo "<p>Aucun résultat de test trouvé.</p>" >> test-report.html
+          fi
+          
+          echo "</div>
+            </div>
+          </body>
+          </html>" >> test-report.html
+          
+      - name: Find Pull Request
+        if: github.event_name == 'pull_request'
+        uses: jwalton/gh-find-current-pr@v1
+        id: find-pr
+        with:
+          state: open
+          
+      - name: Upload HTML report as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: test-report.html
+          retention-days: 30
+          
+      - name: Convert HTML to Markdown for PR comment
+        if: always() && github.event_name == 'pull_request' && steps.find-pr.outputs.number
+        run: |
+          echo "## Rapport de tests Playwright" > test-report.md
+          echo "" >> test-report.md
+          echo "**Date d'exécution:** $(date '+%Y-%m-%d %H:%M:%S')" >> test-report.md
+          echo "**Commit:** ${{ github.sha }}" >> test-report.md
+          echo "**Branch/PR:** ${{ github.ref_name }}" >> test-report.md
+          echo "" >> test-report.md
+          
+          if [ -d "playwright-report" ] && [ -f "playwright-report/results.json" ]; then
+            RESULTS=$(cat playwright-report/results.json)
+            TOTAL=$(echo "$RESULTS" | grep -o '"total":[^,}]*' | cut -d ":" -f2)
+            PASSED=$(echo "$RESULTS" | grep -o '"passed":[^,}]*' | cut -d ":" -f2)
+            FAILED=$(echo "$RESULTS" | grep -o '"failed":[^,}]*' | cut -d ":" -f2)
+            FLAKY=$(echo "$RESULTS" | grep -o '"flaky":[^,}]*' | cut -d ":" -f2)
+            SKIPPED=$(echo "$RESULTS" | grep -o '"skipped":[^,}]*' | cut -d ":" -f2)
+            
+            echo "" >> test-report.md
+            echo "- **Tests totaux:** $TOTAL" >> test-report.md
+            echo "- **Tests réussis:** $PASSED" >> test-report.md
+            echo "- **Tests échoués:** $FAILED" >> test-report.md
+            echo "- **Tests instables:** $FLAKY" >> test-report.md
+            echo "- **Tests ignorés:** $SKIPPED" >> test-report.md
+            echo "" >> test-report.md
+            
+            if [ "$FAILED" -gt "0" ]; then
+              echo "### Tests échoués" >> test-report.md
+              echo "" >> test-report.md
+              node -e "
+                const fs = require('fs');
+                const results = JSON.parse(fs.readFileSync('playwright-report/results.json', 'utf8'));
+                let failedTests = '';
+                
+                function findFailedTests(suites, suitePath = '') {
+                  suites.forEach(suite => {
+                    const newPath = suitePath ? suitePath + ' > ' + suite.title : suite.title;
+                    
+                    if (suite.suites) findFailedTests(suite.suites, newPath);
+                    
+                    if (suite.specs) findFailedTests(suite.specs, newPath);
+                    
+                    if (suite.tests) {
+                      suite.tests.forEach(test => {
+                        if (test.results && test.results.some(r => r.status === 'failed')) {
+                          const fullTitle = newPath + ' > ' + test.title;
+                          failedTests += '- ' + fullTitle + '\n';
+                        }
+                      });
+                    }
+                  });
+                }
+                
+                findFailedTests(results.suites);
+                fs.appendFileSync('test-report.md', failedTests);
+              "
+              echo "" >> test-report.md
+            fi
+          else
+            echo "Aucun résultat de test trouvé." >> test-report.md
+          fi
+          
+          echo "### Rapport complet" >> test-report.md
+          echo "" >> test-report.md
+          echo "Un rapport HTML détaillé est disponible dans les artifacts de cette exécution." >> test-report.md
+          
+      - name: Comment PR with Test Report
+        if: always() && github.event_name == 'pull_request' && steps.find-pr.outputs.number
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('test-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: ${{ steps.find-pr.outputs.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+            
+      - name: Create/Update Playwright Report as Check
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('test-report.md', 'utf8');
+            
+            // Pour les push sur main, créer une issue ou mettre à jour une existante
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'playwright-report',
+              state: 'open'
+            });
+            
+            if (issues.data.length > 0) {
+              // Mettre à jour l'issue existante
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: report
+              });
+              console.log(`Issue Playwright mise à jour: #${issues.data[0].number}`);
+            } else {
+              // Créer une nouvelle issue
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Rapport de tests Playwright',
+                body: report,
+                labels: ['playwright-report']
+              });
+              console.log(`Nouvelle issue Playwright créée: #${newIssue.data.number}`);
+            }
