@@ -5,7 +5,7 @@ metadata:
   name: workload-scheduler-role
 rules:
 - apiGroups: [""]
-  resources: ["pods"]
+  resources: ["pods", "nodes", "namespaces"]
   verbs: ["get", "list"]
 - apiGroups: ["apps"]
   resources: ["deployments","statefulsets", "deployments/scale", "daemonsets" ]
