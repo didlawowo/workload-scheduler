@@ -6,4 +6,9 @@ protected_namespaces = [
     "longhorn-system",
     # "keeper",
 ]
+
+protected_labels = {
+    "app.kubernetes.io/part-of": "argocd"
+}
+
 shutdown_label_selector = 'shutdown="false"'
