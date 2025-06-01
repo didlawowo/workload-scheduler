@@ -3,7 +3,7 @@ image:
   tag: "e7df721"
   pullPolicy: "Always"
   pullSecrets:
-    - name: registry-credentials
+  - name: registry-credentials
 domainName: "workload-scheduler.dc-tech.work"
 autoscaling:
   enabled: false
@@ -16,35 +16,12 @@ strategy:
 serviceAccount:
   create: true
   name: workload-scheduler
-cronJobs:
-  call-api:
-    enabled: true
-    schedule: "0 */3 * * *"
-    image: alpine/curl
-    imagePullPolicy: Always
-    command: ["/bin/bash"]
-    args:
-      - -c
-      - curl -X POST http://workload-sheduler:8000/delete-rs
-    restartPolicy: OnFailure
-    resources:
-      limits:
-        cpu: 200m
-        memory: 512Mi
-      requests:
-        cpu: 50m
-        memory: 128Mi
-    nodeSelector:
-      kubernetes.io/arch: "arm64"
-    env: []
-    envFrom: []
-    volumes: []
-    volumeMounts: []
+cronJobs: []
 application:
   ports:
-    - name: http
-      containerPort: 8000
-      protocol: TCP
+  - name: http
+    containerPort: 8000
+    protocol: TCP
   containerName: workload
   command: []
   args: []
