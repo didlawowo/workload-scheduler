@@ -1,9 +1,9 @@
 image:
   repository: fizzbuzz2/workload-scheduler
-  tag: "e7df721"
+  tag: "599f7fb"
   pullPolicy: "Always"
   pullSecrets:
-  - name: registry-credentials
+    - name: registry-credentials
 domainName: "workload-scheduler.dc-tech.work"
 autoscaling:
   enabled: false
@@ -19,9 +19,9 @@ serviceAccount:
 cronJobs: []
 application:
   ports:
-  - name: http
-    containerPort: 8000
-    protocol: TCP
+    - name: http
+      containerPort: 8000
+      protocol: TCP
   containerName: workload
   command: []
   args: []
