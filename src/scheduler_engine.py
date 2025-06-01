@@ -117,44 +117,30 @@ class SchedulerEngine:
         """
         
         try:
-            if not schedule.active:
-                logger.debug(
-                    f"Programmation {schedule.id} ({schedule.name}, UID: {schedule.uid}) inactive, ignorée"
-                )
-                return
-
             should_start = self._should_execute(schedule.cron_start, now)
             should_stop = self._should_execute(schedule.cron_stop, now)
 
             logger.debug(
-                f"Programmation {schedule.id} ({schedule.name}, UID: {schedule.uid}): status={schedule.status}, should_start={should_start}, should_stop={should_stop}"
+                f"Programmation {schedule.id} ({schedule.name}, UID: {schedule.uid}): status={schedule.status}, active={schedule.active}, should_start={should_start}, should_stop={should_stop}"
             )
             logger.debug(
                 f"cron_start: {schedule.cron_start}, cron_stop: {schedule.cron_stop}"
             )
 
-            if should_start and schedule.status == ScheduleStatus.NOT_SCHEDULED:
+            if should_start and (schedule.status == ScheduleStatus.NOT_SCHEDULED or not schedule.active):
                 logger.info(
                     f"Déclenchement du démarrage pour {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})"
                 )
                 await self._start_workload(schedule)
-            elif should_stop and schedule.status == ScheduleStatus.SCHEDULED:
+            elif should_stop and schedule.status == ScheduleStatus.SCHEDULED and schedule.active:
                 logger.info(
                     f"Déclenchement de l'arrêt pour {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})"
                 )
                 await self._stop_workload(schedule)
-            # else:
-            #     conditions = []
-            #     if schedule.status == ScheduleStatus.NOT_SCHEDULED and not should_start:
-            #         conditions.append("Le workload est arrêté mais l'heure de démarrage n'est pas atteinte")
-            #     elif schedule.status == ScheduleStatus.SCHEDULED and not should_stop:
-            #         conditions.append("Le workload est démarré mais l'heure d'arrêt n'est pas atteinte")
-            #     elif schedule.status == ScheduleStatus.NOT_SCHEDULED and should_stop:
-            #         conditions.append("Le workload est déjà arrêté")
-            #     elif schedule.status == ScheduleStatus.SCHEDULED and should_start:
-            #         conditions.append("Le workload est déjà démarré")
-
-            #     logger.debug(f"Aucune action pour {schedule.name} (UID: {schedule.uid}): {', '.join(conditions)}")
+            elif not schedule.active:
+                logger.debug(
+                    f"Programmation {schedule.id} ({schedule.name}, UID: {schedule.uid}) inactive, mais vérifiée pour un éventuel démarrage"
+                )
 
         except Exception as e:
             logger.error(
@@ -208,14 +194,17 @@ class SchedulerEngine:
         try:
             logger.info(f"🚀 Démarrage du workload: {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})")
             
-            result = await self.client.get(url=f"{os.getenv('API_URL')}/up/{schedule.uid}")
+            result = await self.client.get(url=f"{os.getenv('API_URL')}/manage/up/deploy/{schedule.uid}")
             result_data = result.json()
             
             if result_data.get("status") == "success":
                 # Créer un dictionnaire pour la mise à jour
                 update_data = {
+                    "active": True,
                     "status": ScheduleStatus.SCHEDULED.value,
-                    "last_update": datetime.now(self.timezone).isoformat()
+                    "last_update": datetime.now(self.timezone).isoformat(),
+                    "cron_start": schedule.cron_start if hasattr(schedule, 'cron_start') else None,
+                    "cron_stop": schedule.cron_stop if hasattr(schedule, 'cron_stop') else None
                 }
                 
                 await self.client.put(
@@ -230,7 +219,7 @@ class SchedulerEngine:
             logger.error(f"Erreur lors du démarrage: {e}")
             logger.exception(e)
             
-    async def _stop_workload(self, schedule: WorkloadSchedule):
+    async def _stop_workload(self, schedule):
         """
         Arrête un workload en utilisant son UID.
 
@@ -241,24 +230,31 @@ class SchedulerEngine:
             logger.info(
                 f"🛑 Arrêt du workload: {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})"
             )
-            self
-            result = "toto"
+            
+            result = await self.client.get(
+                url=f"{os.getenv('API_URL')}/manage/down/deploy/{schedule.uid}"
+            )
+            result_data = result.json()
 
-            if result["status"] == "success":
-                updated_schedule = schedule
-                updated_schedule.status = ScheduleStatus.NOT_SCHEDULED
-                updated_schedule.last_update = datetime.now(self.timezone)
-
+            if result_data.get("status") == "success":
+                update_data = {
+                    "active": False,
+                    "status": ScheduleStatus.SCHEDULED.value,
+                    "last_update": datetime.now(self.timezone).isoformat(),
+                    "cron_start": schedule.cron_start if hasattr(schedule, 'cron_start') else None,
+                    "cron_stop": schedule.cron_stop if hasattr(schedule, 'cron_stop') else None
+                }
+                
                 await self.client.put(
                     url=f"{os.getenv('API_URL')}/schedules/{schedule.id}",
-                    json=updated_schedule.__dict__,
+                    json=update_data,
                 )
                 logger.success(
                     f"✅ Workload arrêté avec succès: {schedule.name} (UID: {schedule.uid})"
                 )
             else:
                 logger.error(
-                    f"❌ Échec de l'arrêt du workload {schedule.name} (UID: {schedule.uid}): {result['message']}"
+                    f"❌ Échec de l'arrêt du workload {schedule.name} (UID: {schedule.uid}): {result_data.get('message', 'Unknown error')}"
                 )
 
         except Exception as e:
