@@ -1,6 +1,7 @@
 # Workload Scheduler
 
 ## Description du projet
+ 
 
 Workload Scheduler est une application FastAPI qui permet de gérer et planifier les charges de travail Kubernetes (deployments, statefulsets, daemonsets) selon des expressions cron. Cet outil offre la possibilité de démarrer et arrêter automatiquement des workloads Kubernetes, optimisant ainsi les ressources du cluster en fonction de plannings prédéfinis.
 
@@ -122,10 +123,36 @@ Les variables d'environnement suivantes sont disponibles pour configurer l'appli
 
 Une fois l'application démarrée, vous pouvez y accéder via:
 
-- Interface web: http://localhost:8000
-- Documentation API: http://localhost:8000/docs
+- Interface web: <http://localhost:8000>
+- Documentation API: <http://localhost:8000/docs>
 
 ## Guide d'utilisation
+
+### Captures d'écran de l'interface
+
+#### Vue d'ensemble des workloads
+
+L'interface principale affiche tous les Deployments disponibles dans le cluster avec leur statut, leurs répliques et leurs planifications configurées :
+
+![Interface principale - Liste des deployments](documentation/workloads-overview.png)
+
+#### Configuration des planifications cron
+
+Pour configurer les expressions cron de démarrage et d'arrêt d'un workload, cliquez sur l'icône de modification à côté du workload souhaité :
+
+![Configuration des planifications cron](documentation/cron-scheduling-modal.png)
+
+Cette interface permet de :
+- Définir l'expression cron de démarrage (Cron start)
+- Définir l'expression cron d'arrêt (Cron stop)
+- Voir des exemples d'expressions cron courantes
+- Valider et enregistrer les modifications
+
+### Vidéo de démonstration
+
+Pour une compréhension rapide des fonctionnalités et de l'utilisation du Workload Scheduler, consultez notre vidéo de démonstration :
+
+<video src="documentation/how_use_workload_scheduler.mp4" width="320" height="240" controls></video>
 
 ### Interface Web
 
@@ -305,5 +332,4 @@ pytest --cov=src
 - Commentez le code complexe
 - Utilisez des noms de variables et de fonctions descriptifs
 
-## Licence
-
+## Licence 
