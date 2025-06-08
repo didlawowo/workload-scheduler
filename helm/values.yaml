@@ -66,14 +66,14 @@ scheduler:
       memory: 64Mi
 # Environment variables
 env:
-- name: API_URL
-  value: "http://workload-scheduler.workload-scheduler.svc.cluster.local:8000"
-- name: ARGOCD_USERNAME
-  value: "admin"
-- name: ARGOCD_PASSWORD
-  value: "password"
-- name: ARGOCD_API_URL
-  value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
+# - name: API_URL
+#   value: "http://workload-scheduler.workload-scheduler.svc.cluster.local:8000"
+# - name: ARGOCD_USERNAME
+#   value: "admin"
+# - name: ARGOCD_PASSWORD
+#   value: "password"
+# - name: ARGOCD_API_URL
+#   value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
 - name: JWT_SECRET_KEY
   value: "Wx7KpLzJ5q3RbT9dN8fEyU2mA6vH4cGQ"
 # Health checks
