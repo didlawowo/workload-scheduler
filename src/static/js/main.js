@@ -29,6 +29,12 @@ function toggleWorkloadDetails(button) {
     }
 }
 function manageWorkloadStatus(type, name, uid, action) {
+    if (action === 'down-all') {
+        if (!confirm('Are you sure you want to shutdown ALL workloads? This will affect all deployments and statefulsets in the cluster.')) {
+            return;
+        }
+    }
+
     let url = ``;
     if (action === 'down') {
         url = `/manage/down/${type}/${uid}`;
