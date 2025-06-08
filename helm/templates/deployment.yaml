@@ -4,6 +4,7 @@ kind: Deployment
 metadata:
   name: {{ template "application.fullname" . }}
   labels: {{- include "application.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
   namespace: {{ .Release.Namespace }}
 spec:
   {{- if and (not .Values.autoscaling.enabled)  }}
@@ -11,10 +12,12 @@ spec:
   {{- end }}
   selector:
     matchLabels: {{- include "application.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
   strategy: {{ toYaml .Values.strategy | nindent 4 }}
   template:
     metadata:
       labels: {{- include "application.labels" . | nindent 8 }}
+        app.kubernetes.io/component: api
       annotations:
         ad.datadoghq.com/tags: '{"appName":"workdload-scheduler","component":"back-office"}'
         # ad.datadoghq.com/workload.logs: '[{"source":"python","service":"workdload-scheduler", "log_processing_rules": [{"type": "multi_line", "name": "log_start_with_date", "pattern" : "[0-9]{4}-[0-9]{2}-[0-9]{2}|[0-9]{2}\.[0-9]{3}"}]}]'

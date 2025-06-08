@@ -19,22 +19,22 @@ tasks:
     cmds:
     - docker compose logs -f
 
+  create-venv:
+    desc: Create a virtual env
+    cmds:
+    - uv venv --python 3.12
+
   run-dev:
     desc: Run the app localy
     dir: src
     cmds:
-    - pipenv run python main.py
-  
+    - uv run python main.py
+
   run-scheduler:
     desc: Run the scheduler localy
     dir: src
     cmds:
-    - pipenv run python scheduler_engine.py
-
-  shell:
-    desc: Open a shell from virtual env
-    cmds:
-    - pipenv shell
+    - uv run python scheduler_engine.py
 
   helm-template:
     desc: template helm chart

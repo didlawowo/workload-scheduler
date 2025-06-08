@@ -1,0 +1,51 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "application.fullname" . }}-scheduler
+  labels: {{- include "application.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+  namespace: {{ .Release.Namespace }}
+spec:
+  {{- if and (not .Values.autoscaling.enabled)  }}
+  replicas: {{ .Values.scheduler.replicas | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: 
+      {{- include "application.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: scheduler
+  strategy: {{ toYaml .Values.strategy | nindent 4 }}
+  template:
+    metadata:
+      labels: 
+        {{- include "application.labels" . | nindent 8 }}
+        app.kubernetes.io/component: scheduler
+      annotations:
+        ad.datadoghq.com/tags: '{"appName":"workdload-scheduler","component":"scheduler"}'
+        ad.datadoghq.com/workload-scheduler-scheduler.logs: '[{"source":"python","service":"workdload-scheduler"}]'
+    spec:
+      serviceAccountName: {{ default (include "application.fullname" .) .Values.serviceAccount.name }}
+      containers:
+        - name: {{ default .Values.application.containerName (include "application.fullname" .) }}-scheduler
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "scheduler_engine.py"]
+          workingDir: /app/src
+          {{- with .Values.scheduler.resources | default .Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.env }}
+          env: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.envFrom }}
+          envFrom: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts: {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}

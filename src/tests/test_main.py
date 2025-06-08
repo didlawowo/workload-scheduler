@@ -6,13 +6,21 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 import json
 
-with patch('kubernetes.config.incluster_config.InClusterConfigLoader.load_and_set'):
-    with patch('kubernetes.client.AppsV1Api'), patch('kubernetes.client.CoreV1Api'):
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        import main
-        from main import app
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-client = TestClient(app)
+@pytest.fixture(autouse=True)
+def mock_kubernetes_config():
+    """Fixture pour mocker la configuration Kubernetes"""
+    with patch('kubernetes.config.incluster_config.InClusterConfigLoader.load_and_set'):
+        with patch('kubernetes.client.AppsV1Api'), patch('kubernetes.client.CoreV1Api'):
+            yield
+
+@pytest.fixture
+def test_client(mock_kubernetes_config):
+    """Fixture pour le client de test"""
+    import main
+    from main import app
+    return TestClient(app)
 
 @pytest.fixture
 def mock_kubernetes_clients():
@@ -109,22 +117,22 @@ async def test_init_database_exception_handling():
                 
                 mock_logger.error.assert_called()
 
-def test_status_endpoint(mock_kubernetes_clients, mock_templates):
+def test_status_endpoint(test_client, mock_kubernetes_clients, mock_templates):
     mock_templates.TemplateResponse.return_value = "<html>Mock HTML</html>"
     
     with patch('main.HTMLResponse', return_value="<html>Mock HTML</html>"):
-        response = client.get("/")
+        response = test_client.get("/")
         
         mock_dep, mock_sts, mock_ds = mock_kubernetes_clients
         mock_dep.assert_called_once()
         mock_sts.assert_called_once()
         mock_ds.assert_called_once()
 
-def test_status_endpoint_error(mock_kubernetes_clients):
+def test_status_endpoint_error(test_client, mock_kubernetes_clients):
     mock_deployment, _, _ = mock_kubernetes_clients
     mock_deployment.side_effect = Exception("Kubernetes API error")
     
-    response = client.get("/")
+    response = test_client.get("/")
     
     assert response.status_code == 500
     assert "Error" in response.content.decode()

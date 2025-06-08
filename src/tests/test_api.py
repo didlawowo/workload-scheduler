@@ -452,9 +452,7 @@ def test_remove_crons_from_schedule_not_found(mock_db_manager):
     """Test de suppression des expressions cron d'une planification inexistante"""
     mock_db_manager.get_schedule.return_value = None
     
-    # On patche pour simuler le comportement correct
-    with patch('api.scheduler.remove_crons_from_schedule', side_effect=HTTPException(status_code=404, detail="Schedule not found")):
-        response = client.put("/schedule/non-existent-uid/remove-crons")
+    response = client.put("/schedule/non-existent-uid/remove-crons")
     
     assert response.status_code == 404
     data = response.json()
@@ -479,14 +477,12 @@ def test_remove_crons_from_schedule_update_failure(mock_db_manager):
     mock_db_manager.get_schedule.return_value = mock_schedule
     mock_db_manager.update_schedule.return_value = False
     
-    # On patche pour simuler le comportement correct
-    with patch('api.scheduler.remove_crons_from_schedule', side_effect=HTTPException(status_code=500, detail="Failed to update schedule")):
-        response = client.put("/schedule/test-uid-123/remove-crons")
+    response = client.put("/schedule/test-uid-123/remove-crons")
     
     assert response.status_code == 500
     data = response.json()
     assert "detail" in data
-    assert data["detail"] == "Failed to update schedule"
+    assert "Failed to update schedule" in data["detail"]
     
     mock_db_manager.get_schedule.assert_called_once_with("test-uid-123")
 
@@ -516,9 +512,9 @@ def test_start_workload_api_failure(mock_db_manager):
     mock_db_manager.get_schedule.return_value = mock_schedule
     
     with patch('httpx.AsyncClient.get', side_effect=Exception("API Failure")):
-        try:
-            response = client.post("/schedules/1/start")
-            if response.status_code == 500:
-                assert "API Failure" in response.json().get("detail", "") or "Error" in response.json().get("detail", "")
-        except Exception:
-            pass
+        response = client.post("/schedules/1/start")
+        
+        assert response.status_code == 500
+        data = response.json()
+        assert "detail" in data
+        assert "API Failure" in data["detail"] or "Error" in data["detail"]

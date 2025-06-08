@@ -465,7 +465,6 @@ def test_list_all_deployments_api_exception():
     assert "message" in result
     assert "API Error" in result["message"]
 
-@pytest.mark.skip(reason="Pour tester la ci")
 def test_meets_sts_criteria(mock_statefulset):
     """Test de meets_sts_criteria"""
     result = meets_sts_criteria(mock_statefulset, ["kube-system"], protected_labels)
@@ -560,7 +559,6 @@ def test_list_all_sts():
     apps_v1.list_stateful_set_for_all_namespaces.assert_called_once()
     mock_process.assert_called_once_with(statefulset, core_v1)
 
-@pytest.mark.skip(reason="Pour tester la ci")
 def test_list_all_sts_skip_no_label():
     """Test de list_all_sts avec un StatefulSet sans le label requis"""
     apps_v1 = MagicMock()
