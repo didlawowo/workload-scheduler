@@ -2,30 +2,22 @@
 # This is a YAML-formatted file.
 
 replicaCount: 1
-
 image:
   repository: fizzbuzz2/workload-scheduler
   pullPolicy: IfNotPresent
-  tag: ""
-
+  tag: "ab5da3a"
 nameOverride: ""
 fullnameOverride: ""
-
 serviceAccount:
   create: true
   annotations: {}
   name: ""
-
 podAnnotations: {}
-
 podSecurityContext: {}
-
 securityContext: {}
-
 service:
   type: ClusterIP
   port: 8000
-
 ingress:
   enabled: false
   className: ""
@@ -36,7 +28,6 @@ ingress:
         - path: /
           pathType: Prefix
   tls: []
-
 resources:
   limits:
     cpu: 700m
@@ -44,32 +35,25 @@ resources:
   requests:
     cpu: 250m
     memory: 128Mi
-
 autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
-
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
-
 strategy:
   type: RollingUpdate
   rollingUpdate:
     maxUnavailable: 25%
     maxSurge: 25%
-
 application:
   containerName: workload-scheduler
   ports:
     - name: http
       containerPort: 8000
       protocol: TCP
-
 # Scheduler configuration
 scheduler:
   replicas: 1
@@ -80,7 +64,6 @@ scheduler:
     requests:
       cpu: 100m
       memory: 64Mi
-
 # Environment variables
 env:
   - name: API_URL
@@ -93,7 +76,6 @@ env:
     value: "http://argo-argocd-server.kube-infra.svc.cluster.local/api/v1"
   - name: JWT_SECRET_KEY
     value: "Wx7KpLzJ5q3RbT9dN8fEyU2mA6vH4cGQ"
-
 # Health checks
 livenessProbe:
   httpGet:
@@ -105,7 +87,6 @@ livenessProbe:
   timeoutSeconds: 3
   successThreshold: 1
   failureThreshold: 3
-
 readinessProbe:
   httpGet:
     path: /health
