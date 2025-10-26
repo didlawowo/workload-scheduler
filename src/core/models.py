@@ -1,9 +1,11 @@
-from sqlmodel import SQLModel, Field
-from typing import Optional, Dict, Any
-from datetime import datetime
-from pydantic import field_validator
-from cron_validator import CronValidator
+from datetime import datetime, timezone
 from enum import Enum
+from typing import Any, Dict, Optional
+
+from cron_validator import CronValidator
+from pydantic import field_validator
+from sqlmodel import Field, SQLModel
+
 from utils.clean_cron import clean_cron_expression
 
 
@@ -30,7 +32,7 @@ class WorkloadSchedule(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     uid: str
-    last_update: datetime = Field(default_factory=datetime.utcnow)
+    last_update: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: ScheduleStatus = ScheduleStatus.NOT_SCHEDULED
     active: bool = True
     cron_start: Optional[str] = Field(default=None, nullable=True)
@@ -68,9 +70,9 @@ class WorkloadSchedule(SQLModel, table=True):
             try:
                 last_update = datetime.fromisoformat(last_update.replace("Z", "+00:00"))
             except ValueError:
-                last_update = datetime.utcnow()
+                last_update = datetime.now(timezone.utc)
         elif last_update is None:
-            last_update = datetime.utcnow()
+            last_update = datetime.now(timezone.utc)
 
         status = schedule.get("status")
         if isinstance(status, str):

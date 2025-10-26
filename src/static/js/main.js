@@ -278,7 +278,6 @@ function filterAllWorkloads() {
 
     filterTable("deploymentTable", searchInput, "noDeploymentResults");
     filterTable("statefulsetTable", searchInput, "noStatefulsetResults");
-    filterTable("daemonsets table", searchInput, null);
 }
 
 function filterTable(tableSelector, searchInput, noResultsId) {

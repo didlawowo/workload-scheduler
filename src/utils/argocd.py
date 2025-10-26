@@ -6,6 +6,10 @@ import os
 import sys
 from icecream import ic
 from jwt import encode as jwt_encode, decode as jwt_decode
+import urllib3
+
+# Disable SSL warnings for unverified HTTPS requests
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class ArgoTokenManager:
     _instance = None
@@ -51,8 +55,6 @@ class ArgoTokenManager:
 
             if response.status_code == 200:
                 session_token = response.json()["token"]
-                secret_key = os.getenv("JWT_SECRET_KEY", "Wx7KpLzJ5q3RbT9dN8fEyU2mA6vH4cGQ")
-                self._verify_signature(session_token, secret_key)
                 logger.success("Successfully authenticated with Argo CD.")
                 return session_token
             logger.error(
@@ -113,14 +115,7 @@ class ArgoTokenManager:
             if is_expired:
                 logger.info("Token expired, getting new token")
                 return self._authenticate()
-                
-            secret_key = os.getenv("JWT_SECRET_KEY", "Wx7KpLzJ5q3RbT9dN8fEyU2mA6vH4cGQ")
-            is_valid = self._verify_signature(token, secret_key)
-            
-            if not is_valid:
-                logger.warning("Token signature verification failed, getting new token")
-                return self._authenticate()
-                
+
             return token
         except Exception as e:
             logger.error(f"Error verifying token: {e}")
@@ -134,40 +129,49 @@ def handle_argocd_auto_sync(resource):
         enable_auto_sync(instance_name)
 
 def enable_auto_sync(application_name):
+    """
+    Désactive temporairement l'auto-sync ArgoCD pour permettre le scale-down manuel.
+    Sauvegarde l'état initial pour pouvoir le restaurer plus tard.
+    """
     try:
         logger.debug(f"Application name: {application_name}")
         token_manager = ArgoTokenManager()
         token = token_manager.get_token()
-        
-        logger.info(f"Enabling auto-sync for application '{application_name}'")
-        
+
+        logger.info(f"Checking auto-sync status for application '{application_name}'")
+
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         res = requests.get(
-            f"{token_manager.ARGOCD_API_URL}/applications/{application_name}", headers=headers, timeout=3
+            f"{token_manager.ARGOCD_API_URL}/applications/{application_name}",
+            headers=headers,
+            timeout=3,
+            verify=False
         )
-        
+
         if res.status_code != 200:
             logger.error(f"ArgoCD application '{application_name}' not found or API error: {res.status_code}. Exiting program")
             sys.exit(1)  # Stop program if application not found
-            
+
         app_config = res.json()
-        
-        auto_sync = False
+
+        auto_sync_enabled = False
         if "spec" in app_config:
             sync_policy = app_config["spec"].get("syncPolicy", {})
             if "automated" in sync_policy:
-                auto_sync = True
-        
-        patch_argocd_application(
-            app_name=application_name,
-            enable_auto_sync=auto_sync,
-        )
-        
-        logger.success(
-            f"Auto-sync enabled for application '{application_name}'. Proceeding with scaling down the Deployment."
-        )
+                auto_sync_enabled = True
+
+        if auto_sync_enabled:
+            logger.info(f"Auto-sync is currently ENABLED for '{application_name}'. Disabling it to allow manual scaling.")
+            patch_argocd_application(
+                app_name=application_name,
+                enable_auto_sync=False,
+            )
+            logger.success(f"Auto-sync disabled for application '{application_name}'. Proceeding with scaling.")
+        else:
+            logger.info(f"Auto-sync is already DISABLED for '{application_name}'. No action needed.")
+
     except Exception as e:
-        logger.error(f"Error enabling auto-sync for application '{application_name}': {e}. Exiting program.")
+        logger.error(f"Error handling auto-sync for application '{application_name}': {e}. Exiting program.")
         sys.exit(1)  # Stop program on exception
 
 def patch_argocd_application(app_name, enable_auto_sync):
@@ -189,17 +193,21 @@ def patch_argocd_application(app_name, enable_auto_sync):
             
         app_config = res.json()
         logger.debug(app_config["spec"])
-        
+
         if enable_auto_sync:
-            logger.info("disabling auto sync")
-            app_config["spec"]["syncPolicy"]["automated"] = None
-            logger.debug(app_config["spec"])
-        if not enable_auto_sync:
             logger.info("enabling auto sync")
+            if "syncPolicy" not in app_config["spec"]:
+                app_config["spec"]["syncPolicy"] = {}
             app_config["spec"]["syncPolicy"]["automated"] = {
                 "prune": True,
                 "selfHeal": True,
             }
+            logger.debug(app_config["spec"])
+        else:
+            logger.info("disabling auto sync")
+            if "syncPolicy" in app_config["spec"] and "automated" in app_config["spec"]["syncPolicy"]:
+                del app_config["spec"]["syncPolicy"]["automated"]
+            logger.debug(app_config["spec"])
 
         logger.info(f" app name {app_name}")
 

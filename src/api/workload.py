@@ -1,14 +1,14 @@
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter
-from kubernetes import client
+from kubernetes.client.rest import ApiException
 from loguru import logger
-from typing import Any, Dict
-from utils.argocd import handle_argocd_auto_sync
-from utils.config import protected_namespaces
-from utils.helpers import core_v1, apps_v1
-from core.dbManager import DatabaseManager
 from pydantic import BaseModel
-from icecream import ic
-import os
+
+from core.dbManager import DatabaseManager
+from utils.config import protected_namespaces
+from utils.helpers import apps_v1, core_v1
+
 
 class PodStatus(BaseModel):
     name: str
@@ -17,8 +17,8 @@ class PodStatus(BaseModel):
 
 class ReplicaSetResponse(BaseModel):
     status: str
-    deleted_replicasets: int = None
-    message: str = None
+    deleted_replicasets: Optional[int] = None
+    message: Optional[str] = None
 
 class WorkloadResponse(BaseModel):
     status: str
@@ -107,7 +107,7 @@ async def scale_deployment(uid, action_nbr):
     c = apps_v1.list_deployment_for_all_namespaces()
     for deploy in c.items:
         if deploy.metadata.uid == uid:
-            ic(deploy.metadata.uid)
+            # ic(deploy.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}
             apps_v1.patch_namespaced_deployment_scale(
                 name=deploy.metadata.name, namespace=deploy.metadata.namespace, body=body
@@ -124,7 +124,7 @@ async def scale_statefulset(uid, action_nbr):
     c = apps_v1.list_stateful_set_for_all_namespaces()
     for stateful_set in c.items:
         if stateful_set.metadata.uid == uid:
-            ic(stateful_set.metadata.uid)
+            # ic(stateful_set.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}
             apps_v1.patch_namespaced_stateful_set_scale(
                 name=stateful_set.metadata.name, namespace=stateful_set.metadata.namespace, body=body
@@ -141,7 +141,7 @@ async def scale_daemonset(uid, action_nbr):
     c = apps_v1.list_daemon_set_for_all_namespaces()
     for daemonset in c.items:
         if daemonset.metadata.uid == uid:
-            ic(daemonset.metadata.uid)
+            # ic(daemonset.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}
             apps_v1.patch_namespaced_daemon_set(
                 name=daemonset.metadata.name, namespace=daemonset.metadata.namespace, body=body
@@ -179,9 +179,9 @@ async def manage_status(action: str, resource_type: str, uid: str) -> Dict[str, 
             
         if result:
             return result
-        
+
         return {"status": "error", "message": f"Resource with UID {uid} not found"}
-    except client.exceptions.ApiException as e:
+    except ApiException as e:
         logger.error(e)
         return {"status": "error", "message": str(e)}
 
@@ -216,7 +216,7 @@ def delete_rs_zero():
             f"Deleted {len(deleted_replicasets)} ReplicaSets with 0 desired replicas"
         )
         return {"status": "success", "deleted_replicasets": len(deleted_replicasets)}
-    except client.exceptions.ApiException as e:
+    except ApiException as e:
         logger.error(f"Error deleting ReplicaSets: {str(e)}")
         return {"status": "error", "message": str(e)}
 
@@ -230,9 +230,9 @@ def live():
     """Simple liveness check"""
     return {"status": "success", "message": "Application is live"}
 
-async def check_database():
+async def check_database() -> Dict[str, Any]:
     """Vérifie l'état de la base de données"""
-    db_result = {"status": "success"}
+    db_result: Dict[str, Any] = {"status": "success"}
     db_manager = DatabaseManager()
     try:
         tables_exist = await db_manager.check_table_exists()
@@ -244,12 +244,12 @@ async def check_database():
         await db_manager.close()
     return db_result
 
-async def check_kubernetes():
+async def check_kubernetes() -> Dict[str, Any]:
     """Vérifie l'état du cluster Kubernetes"""
-    k8s_result = {"status": "success"}
+    k8s_result: Dict[str, Any] = {"status": "success"}
     try:
         data = core_v1.list_namespaced_pod(namespace="kube-system")
-        pod_list = []
+        pod_list: List[Dict[str, Optional[str]]] = []
         for pod in data.items:
             pod_list.append({
                 "name": pod.metadata.name,
@@ -257,7 +257,7 @@ async def check_kubernetes():
                 "node": pod.spec.node_name,
             })
         k8s_result["details"] = pod_list
-    except client.exceptions.ApiException as e:
+    except ApiException as e:
         k8s_result["status"] = "error"
         k8s_result["message"] = str(e)
     return k8s_result
