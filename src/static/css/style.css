@@ -377,18 +377,25 @@
         margin-bottom: 10px;
         padding: 8px 0;
         gap: 15px;
+        flex-wrap: wrap;
     }
 
     .header-left {
         display: flex;
-        gap: 6px;
+        gap: 8px;
         flex-shrink: 0;
+        flex-wrap: nowrap;
     }
 
-    .header-left .btn {
-        padding: 6px 12px;
-        font-size: 11px;
+    .header-left .btn.btn-danger,
+    .header-left .btn.btn-success {
+        padding: 10px 18px;
+        font-size: 13px;
         white-space: nowrap;
+        font-weight: 600;
+        width: auto !important;
+        min-width: fit-content;
+        margin: 0;
     }
 
     .header-center {

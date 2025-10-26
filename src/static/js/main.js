@@ -28,6 +28,63 @@ function toggleWorkloadDetails(button) {
         button.insertBefore(newTextNode, button.firstChild);
     }
 }
+function shutdownWorkerNodes() {
+    if (!confirm('Are you sure you want to shutdown all workloads on worker nodes (ryzen, nvidia)? This will NOT affect control-plane workloads.')) {
+        return;
+    }
+
+    let url = `/manage-all/down-workers`;
+
+    // Afficher un indicateur de chargement
+    document.getElementById('progressBar').style.width = '50%';
+
+    fetch(url, { method: 'GET' })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Mettre à jour la barre de progression
+            document.getElementById('progressBar').style.width = '75%';
+
+            const contentType = response.headers.get('content-type');
+
+            if (contentType && contentType.includes('application/json')) {
+                return response.json().then(data => {
+                    return { isJson: true, data: data };
+                });
+            } else {
+                return response.text().then(text => {
+                    try {
+                        const jsonData = JSON.parse(text);
+                        return { isJson: true, data: jsonData };
+                    } catch (e) {
+                        return { isJson: false, data: { status: 'success', message: text || 'Opération effectuée' } };
+                    }
+                });
+            }
+        })
+        .then(result => {
+            // Terminer la barre de progression
+            document.getElementById('progressBar').style.width = '100%';
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        })
+        .catch(error => {
+            // Réinitialiser la barre de progression en cas d'erreur
+            document.getElementById('progressBar').style.width = '0%';
+            alert(`Une erreur est survenue: ${error.message}`);
+        })
+        .finally(() => {
+            // S'assurer que la barre de progression disparaît après un délai
+            setTimeout(() => {
+                document.getElementById('progressBar').style.width = '0%';
+            }, 2000);
+        });
+}
+
 function manageWorkloadStatus(type, name, uid, action) {
     if (action === 'down-all') {
         if (!confirm('Are you sure you want to shutdown ALL workloads? This will affect all deployments and statefulsets in the cluster.')) {

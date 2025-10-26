@@ -71,6 +71,120 @@ async def process_statefulset(sts, mode):
         logger.error(f"Error processing statefulset {sts.metadata.name}: {e}")
 
 @workload.get(
+    "/manage-all/down-workers",
+    response_model=BulkActionResponse,
+    summary="Shutdown workloads on worker nodes",
+    description="Scale down all deployments and statefulsets running on worker nodes (non-control-plane)"
+)
+async def shutdown_worker_nodes() -> Dict[str, Any]:
+    """Arrête tous les workloads tournant sur les nœuds workers (ryzen, nvidia)"""
+    logger.info("Received request to shutdown workloads on worker nodes")
+
+    # Liste des nœuds workers (non-control-plane)
+    worker_nodes = ["ryzen", "nvidia"]
+
+    # Liste des workloads critiques à ne jamais arrêter
+    excluded_workloads = ["traefik"]
+
+    shutdown_count = 0
+
+    try:
+        deployments = apps_v1.list_deployment_for_all_namespaces()
+        logger.info(f"Found {len(deployments.items)} deployments to check")
+
+        statefulsets = apps_v1.list_stateful_set_for_all_namespaces()
+        logger.info(f"Found {len(statefulsets.items)} statefulsets to check")
+
+        # Get all pods to check their nodes
+        all_pods = core_v1.list_pod_for_all_namespaces()
+
+        # Process deployments
+        for deploy in deployments.items:
+            if deploy.metadata.namespace in protected_namespaces:
+                continue
+
+            # Skip excluded workloads
+            if deploy.metadata.name in excluded_workloads:
+                logger.info(f"Skipping excluded deployment '{deploy.metadata.name}'")
+                continue
+
+            # Check if any pod of this deployment runs on worker nodes
+            # Get pods that belong to this deployment by checking labels
+            deploy_selector = deploy.spec.selector.match_labels if deploy.spec.selector and deploy.spec.selector.match_labels else {}
+
+            deploy_pods = [p for p in all_pods.items
+                          if p.metadata.namespace == deploy.metadata.namespace
+                          and p.metadata.labels
+                          and all(p.metadata.labels.get(k) == v for k, v in deploy_selector.items())]
+
+            runs_on_worker = any(pod.spec.node_name and any(worker in pod.spec.node_name for worker in worker_nodes)
+                               for pod in deploy_pods)
+
+            if runs_on_worker:
+                logger.info(f"Shutdown deployment '{deploy.metadata.name}' in namespace '{deploy.metadata.namespace}' (runs on worker node)")
+
+                # Check if deployment has ArgoCD auto-sync and disable it
+                if deploy.metadata.labels and "argocd.argoproj.io/instance" in deploy.metadata.labels:
+                    from utils.argocd import enable_auto_sync
+                    instance_name = deploy.metadata.labels["argocd.argoproj.io/instance"]
+                    logger.info(f"Deployment '{deploy.metadata.name}' has ArgoCD auto-sync, disabling it first")
+                    try:
+                        enable_auto_sync(instance_name)
+                    except Exception as e:
+                        logger.warning(f"Failed to disable ArgoCD auto-sync for '{instance_name}': {e}. Continuing anyway...")
+
+                await process_deployment(deploy, "down")
+                shutdown_count += 1
+
+        # Process statefulsets
+        for sts in statefulsets.items:
+            if sts.metadata.namespace in protected_namespaces:
+                continue
+
+            # Skip excluded workloads
+            if sts.metadata.name in excluded_workloads:
+                logger.info(f"Skipping excluded statefulset '{sts.metadata.name}'")
+                continue
+
+            # Check if any pod of this statefulset runs on worker nodes
+            # Get pods that belong to this statefulset by checking labels
+            sts_selector = sts.spec.selector.match_labels if sts.spec.selector and sts.spec.selector.match_labels else {}
+
+            sts_pods = [p for p in all_pods.items
+                       if p.metadata.namespace == sts.metadata.namespace
+                       and p.metadata.labels
+                       and all(p.metadata.labels.get(k) == v for k, v in sts_selector.items())]
+
+            runs_on_worker = any(pod.spec.node_name and any(worker in pod.spec.node_name for worker in worker_nodes)
+                               for pod in sts_pods)
+
+            if runs_on_worker:
+                logger.info(f"Shutdown statefulset '{sts.metadata.name}' in namespace '{sts.metadata.namespace}' (runs on worker node)")
+
+                # Check if statefulset has ArgoCD auto-sync and disable it
+                if sts.metadata.labels and "argocd.argoproj.io/instance" in sts.metadata.labels:
+                    from utils.argocd import enable_auto_sync
+                    instance_name = sts.metadata.labels["argocd.argoproj.io/instance"]
+                    logger.info(f"StatefulSet '{sts.metadata.name}' has ArgoCD auto-sync, disabling it first")
+                    try:
+                        enable_auto_sync(instance_name)
+                    except Exception as e:
+                        logger.warning(f"Failed to disable ArgoCD auto-sync for '{instance_name}': {e}. Continuing anyway...")
+
+                await process_statefulset(sts, "down")
+                shutdown_count += 1
+
+        logger.success(f"Shutdown {shutdown_count} workloads on worker nodes")
+        return {
+            "message": f"Shutdown {shutdown_count} workloads running on worker nodes (ryzen, nvidia)"
+        }
+    except Exception as e:
+        logger.error(f"Error while shutting down worker nodes: {e}")
+        return {
+            "message": f"Error while shutting down worker nodes: {str(e)}"
+        }
+
+@workload.get(
     "/manage-all/{mode}",
     response_model=BulkActionResponse,
     summary="Manage all deployments and statefulsets",
@@ -83,16 +197,16 @@ async def manage_all_deployments(mode: str) -> Dict[str, Any]:
     try:
         deployments = apps_v1.list_deployment_for_all_namespaces()
         logger.info(f"Found {len(deployments.items)} deployments to process")
-        
+
         statefulsets = apps_v1.list_stateful_set_for_all_namespaces()
         logger.info(f"Found {len(statefulsets.items)} statefulsets to process")
-        
+
         for deploy in deployments.items:
             await process_deployment(deploy, mode)
-        
+
         for sts in statefulsets.items:
             await process_statefulset(sts, mode)
-                
+
         return {
             "message": f"Bulk action to {mode} all workloads initiated. Check logs for individual action results."
         }
