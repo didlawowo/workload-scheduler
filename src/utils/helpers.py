@@ -21,8 +21,15 @@ def initialize_kubernetes():
     logger.info("Kubernetes API clients initialized.")
     return apps_v1_api, core_v1_api
 
-# Initialize at module level so they can be imported directly
-apps_v1, core_v1 = initialize_kubernetes()
+# Initialize at module level, but skip in test mode
+if os.getenv("TESTING") == "1":
+    # In test mode, create None placeholders (tests should mock these)
+    apps_v1 = None
+    core_v1 = None
+    logger.warning("Skipping Kubernetes initialization in test mode")
+else:
+    # Normal initialization for production/development
+    apps_v1, core_v1 = initialize_kubernetes()
 
 class RetryableAsyncClient(httpx.AsyncClient):
     """🔄 Client HTTP avec retry intégré"""
