@@ -14,30 +14,31 @@
 
 <body>
     <div class="container">
-        <div style="position: relative;">
-            <div style="display: flex; justify-content: center; align-items: center;">
-                <h1 style="margin-right: 20px;">Kubernetes Workloads Manager</h1>
-                <img src="/static/image.png" alt="Kubernetes Logo" style="height: 50px;">
+        <div class="header-compact">
+            <div class="header-left">
+                <button onclick="shutdownWorkerNodes()" class="btn btn-danger" title="Shutdown workloads on worker nodes (ryzen, nvidia)">Stop Workers</button>
+                <button onclick="manageWorkloadStatus('','','','down-all')" class="btn btn-danger" title="Shutdown all workloads in the cluster">Stop All</button>
+                <button onclick="manageWorkloadStatus('','','','up-all')" class="btn btn-success" title="Scale up all workloads">Start All</button>
             </div>
-            <div class="actions" id="globalActions" style="position: absolute; top: 0; right: 0;">
-                <button onclick="manageWorkloadStatus('','','','down-all')" class="btn btn-danger">Shutdown All</button>
-                <button onclick="manageWorkloadStatus('','','','up-all')" class="btn btn-success">Scale Up All</button>
+
+            <div class="header-center">
+                <h1>Kubernetes Workloads Manager</h1>
+                <img src="/static/image.png" alt="Kubernetes Logo">
+                <span class="version-badge">{{ version }}</span>
             </div>
-            <p
-                style="position: absolute; top: 20px;   margin: 20px auto; text-align: center; background-color: #3182ce; color: white; padding: 5px ; border-radius: 2px;">
-                {{ version }}</p>
+
+            <div class="header-right">
+                <div class="search-bar">
+                    <input type="text" id="globalSearch" placeholder="Rechercher par nom ou namespace...">
+                    <button id="resetGlobalSearch" title="Réinitialiser la recherche">
+                        <i class="material-icons">clear</i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <div class="progress-container">
             <div id="progressBar" class="progress-bar"></div>
-        </div>
-
-        <div class="search-container">
-            <div class="search-bar">
-                <input type="text" id="globalSearch" placeholder="Rechercher par nom ou namespace...">
-                <button id="resetGlobalSearch" title="Réinitialiser la recherche">
-                    <i class="material-icons">clear</i>
-                </button>
-            </div>
         </div>
 
         <div class="section" id="deployment">
@@ -50,8 +51,7 @@
                         <th>Namespace</th>
                         <th style="width: 30px;">Replicas</th>
                         <th style="width: 30px;">Available</th>
-                        <!-- <th>Labels</th> -->
-                        <th>Details</th>
+                        <th>Node(s)</th>
                         <th>Actions</th>
                         <th>Cron Schedules</th>
                     </tr>
@@ -65,18 +65,24 @@
                             <td {% if d.replicas is none %}>0{% else %}>{{ d.replicas }}{% endif %}</td>
                             <td {% if d.available_replicas is none %}>0{% else %}>{{ d.available_replicas }}{% endif %}
                             </td>
-                            <!-- <td>
-                            {% if d.labels %}
-                            <ul style="list-style-type: none; padding: 0; margin: 0;">
-                                {% for key, value in d.labels.items() %}
-                                <li><strong>{{ key }}:</strong> {{ value }}</li>
-                                {% endfor %}
-                            </ul>
-                            {% else %}
-                            No labels
-                            {% endif %}
-                        </td> -->
                             <td>
+                                {% if d.pods %}
+                                    {% set nodes = [] %}
+                                    {% for pod in d.pods %}
+                                        {% if pod.node and pod.node not in nodes %}
+                                            {% set _ = nodes.append(pod.node) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    <div style="font-size: 11px;">
+                                        {% for node in nodes %}
+                                            <div>{{ node }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span style="color: #999;">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td style="display:none;">
                                 {% if d.pods %}
                                 {% for pod in d.pods %}
                                 <div class="pod-details collapsed">
@@ -204,8 +210,7 @@
                         <th>Namespace</th>
                         <th style="width: 30px;">Replicas</th>
                         <th style="width: 30px;">Available</th>
-                        <!-- <th>Labels</th> -->
-                        <th>Details</th>
+                        <th>Node(s)</th>
                         <th>Actions</th>
                         <th>Cron Schedules</th>
                     </tr>
@@ -218,8 +223,25 @@
         
                         <td {% if d.replicas is none %}>0{% else %}>{{ d.replicas }}{% endif %}</td>
                         <td {% if d.available_replicas is none %}>0{% else %}>{{ d.available_replicas }}{% endif %}</td>
-                        
+
                         <td>
+                            {% if d.pods %}
+                                {% set nodes = [] %}
+                                {% for pod in d.pods %}
+                                    {% if pod.node and pod.node not in nodes %}
+                                        {% set _ = nodes.append(pod.node) %}
+                                    {% endif %}
+                                {% endfor %}
+                                <div style="font-size: 11px;">
+                                    {% for node in nodes %}
+                                        <div>{{ node }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span style="color: #999;">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td style="display:none;">
                             {% if d.pods %}
                                 {% for pod in d.pods %}
                                 <div class="pod-details collapsed">
@@ -306,68 +328,6 @@
             <div id="noStatefulsetResults" class="no-results">Aucun statefulset ne correspond à votre recherche.</div>
         </div>
 
-        <div class="section" id="daemonsets">
-            <h2>DaemonSets</h2>
-            <p>There are {{ ds|length }} DaemonSets in the cluster.</p>
-            <table id="daemonsetTable">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Namespace</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in ds %}
-                    <tr>
-                        <td>{{ d.name }}</td>
-                        <td>{{ d.namespace }}</td>
-                        <td>
-                            {% for pod in d.pods %}
-                            <div class="pod-details collapsed">
-                                <div class="status-line">
-                                    <span>
-                                        <strong>Status:</strong>
-                                        <span
-                                            style="color: {% if pod.status == 'Running' %}green{% else %}red{% endif %};">
-                                            {{ pod.status }}
-                                        </span>
-                                    </span>
-                                    <button class="toggle-button" onclick="toggleWorkloadDetails(this)">Show
-                                        Details</button>
-                                </div>
-                                <div class="detailed-info">
-                                    <strong>Node:</strong> {{ pod.node }}<br>
-                                    <strong>Has PVC:</strong> {{ "YES" if pod.has_pvc else 'No' }}<br>
-                                    <strong>Requests:</strong>
-                                    {% if pod.resource_requests %}
-                                    <ul style="margin: 0px 0; padding-left: 20px;">
-                                        {% for resource, value in pod.resource_requests.items() %}
-                                        <li>{{ resource }}: {{ value }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    {% else %}
-                                    <span style="color: orange"> Warning {% endif %}</span><br>
-
-                                    <strong>Limits:</strong>
-                                    {% if pod.resource_limits %}
-                                    <ul style="margin: 0px 0; padding-left: 20px;">
-                                        {% for resource, value in pod.resource_limits.items() %}
-                                        <li>{{ resource }}: {{ value }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                    {% else %}
-                                    <span style="color: orange"> Warning {% endif %}</span>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <div id="noDaemonsetResults" class="no-results">Aucun daemonset ne correspond à votre recherche.</div>
-        </div>
 </body>
 <script src="/static/js/main.js"></script>
 

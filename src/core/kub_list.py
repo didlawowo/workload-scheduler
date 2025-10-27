@@ -1,6 +1,6 @@
-from kubernetes import client
+from kubernetes.client.rest import ApiException
 from loguru import logger
-from icecream import ic
+
 
 def get_pod_details(pod, owner_type="DaemonSet", owner_name=None, owner_uid=None):
     """
@@ -113,7 +113,7 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces, protected_labels
         logger.info(f"Processed {len(daemonset_list)} DaemonSets after filtering")
         return daemonset_list
 
-    except client.exceptions.ApiException as e:
+    except ApiException as e:
         logger.error(f"Error fetching DaemonSets: {str(e)}")
         return {"status": "error", "message": str(e)}
 
@@ -152,7 +152,7 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_label
         deployment_list = []
         for d in deployments.items:
             # Skip if not matching our criteria
-            ic(d.metadata.labels)
+            # ic(d.metadata.labels)
             
             should_skip = False
             if d.metadata.name == "workload-scheduler" or d.metadata.namespace in protected_namespaces:
@@ -173,7 +173,7 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_label
         
         logger.info(f"Processed {len(deployment_list)} Deployments after filtering")
         return deployment_list
-    except client.exceptions.ApiException as e:
+    except ApiException as e:
         logger.error("Error fetching deployments: %s", e)
         return {"status": "error", "message": str(e)}
 
@@ -230,8 +230,8 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces, protected_labels):
 
         logger.info(f"Processed {len(sts_list)} StatefulSets after filtering")
         return sts_list
-        
-    except client.exceptions.ApiException as e:
+
+    except ApiException as e:
         logger.error(f"Error fetching StatefulSets: {str(e)}")
         return {"status": "error", "message": str(e)}
 

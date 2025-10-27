@@ -1,20 +1,22 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any, Dict
+
+from cron_validator import CronValidator
+from icecream import ic  # noqa: F401
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlmodel import select, text
-from .models import WorkloadSchedule
+
+from core.models import WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
-from icecream import ic  # noqa: F401
-from cron_validator import CronValidator
-from typing import Dict, Any
 
 Base = declarative_base()
 DATABASE_URL = "sqlite+aiosqlite:///data/schedule.db"
 
 
 class DatabaseManager:
-    def __init__(self, database_url: str = None):
+    def __init__(self, database_url: str = ""):
         """🗄️ Initialise la connexion à la base de données"""
         self.database_url = database_url or DATABASE_URL
         self.engine = create_async_engine(self.database_url, echo=False)
@@ -90,7 +92,7 @@ class DatabaseManager:
                     try:
                         schedule["last_update"] = datetime.fromisoformat(schedule["last_update"].replace("Z", "+00:00"))
                     except ValueError:
-                        schedule["last_update"] = datetime.utcnow()
+                        schedule["last_update"] = datetime.now(timezone.utc)
 
                 if schedule.get("cron_start"):
                     schedule["cron_start"] = clean_cron_expression(schedule["cron_start"])
@@ -155,7 +157,7 @@ class DatabaseManager:
                     try:
                         schedule_data["last_update"] = datetime.fromisoformat(schedule_data["last_update"].replace("Z", "+00:00"))
                     except ValueError:
-                        schedule_data["last_update"] = datetime.utcnow()
+                        schedule_data["last_update"] = datetime.now(timezone.utc)
 
             if "cron_start" in schedule_data and schedule_data["cron_start"]:
                 schedule_data["cron_start"] = clean_cron_expression(schedule_data["cron_start"])

@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException, Path, Body
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
+from cron_validator import CronValidator
+from fastapi import APIRouter, Body, HTTPException, Path
 from loguru import logger
 from pydantic import BaseModel
+
 from core.dbManager import DatabaseManager
-from core.models import WorkloadSchedule
+from core.models import ScheduleStatus, WorkloadSchedule
 from utils.clean_cron import clean_cron_expression
-from typing import List, Optional, Dict, Any
-from cron_validator import CronValidator
-from datetime import datetime
 
 scheduler = APIRouter(tags=["Schedule Management"])
 db_manager = DatabaseManager()
@@ -35,7 +37,7 @@ async def get_schedules() -> List[WorkloadSchedule]:
     try:
         logger.debug("GET /schedules")
         schedules = await db_manager.get_all_schedules()
-        return schedules
+        return list(schedules)
     except Exception as e:
         logger.error(f"Error in GET /schedules: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
@@ -88,7 +90,7 @@ def prepare_schedule_data(data: Dict[str, Any]) -> Dict[str, Any]:
         try:
             data["last_update"] = datetime.fromisoformat(data["last_update"].replace("Z", "+00:00"))
         except ValueError:
-            data["last_update"] = datetime.utcnow()
+            data["last_update"] = datetime.now(timezone.utc)
 
     if data.get("cron_start"):
         data["cron_start"] = clean_cron_expression(data["cron_start"])
@@ -126,7 +128,7 @@ async def create_schedule(
         
         await db_manager.store_schedule_status(validated_data)
         logger.success("POST /schedule - Created schedule")
-        return {"status": "created", "detail": "Schedule created successfully"}
+        return ScheduleResponse(status="created", detail="Schedule created successfully")
     except ValueError as ve:
         logger.error(f"Validation error: {ve}")
         raise HTTPException(status_code=400, detail=str(ve))
@@ -166,7 +168,7 @@ async def update_schedule_route(
             logger.warning(f"Schedule with ID {schedule_id} not found")
             raise HTTPException(status_code=404, detail="Schedule not found")
 
-        return {"status": "updated"}
+        return ScheduleResponse(status="updated")
     except ValueError as ve:
         logger.error(f"Validation error: {ve}")
         raise HTTPException(status_code=400, detail=str(ve))
@@ -203,7 +205,7 @@ async def delete_schedule_route(
             logger.warning(f"Schedule with ID {schedule_id} not found")
             raise HTTPException(status_code=404, detail="Schedule not found")
         logger.info(f"Successfully deleted schedule with ID {schedule_id}")
-        return {"status": "deleted"}
+        return ScheduleResponse(status="deleted")
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -235,19 +237,23 @@ async def remove_crons_from_schedule(
         if not schedule:
             logger.warning(f"Schedule with UID {uid} not found")
             raise HTTPException(status_code=404, detail="Schedule not found")
-        
+
+        if schedule.id is None:
+            logger.error(f"Schedule with UID {uid} has no ID")
+            raise HTTPException(status_code=500, detail="Schedule has no ID")
+
         schedule.cron_start = ""
         schedule.cron_stop = ""
-        schedule.status = "not scheduled"
-        schedule.last_update = datetime.utcnow()
-        
+        schedule.status = ScheduleStatus.NOT_SCHEDULED
+        schedule.last_update = datetime.now(timezone.utc)
+
         success = await db_manager.update_schedule(schedule.id, schedule)
         
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update schedule")
-        
+
         logger.info(f"Successfully removed cron expressions from schedule with UID {uid}")
-        return {"status": "updated", "detail": "Cron expressions removed"}
+        return ScheduleResponse(status="updated", detail="Cron expressions removed")
     except HTTPException as e:
         raise e
     except Exception as e:
