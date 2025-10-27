@@ -84,7 +84,7 @@ async def shutdown_worker_nodes() -> Dict[str, Any]:
     worker_nodes = ["ryzen", "nvidia"]
 
     # Liste des workloads critiques à ne jamais arrêter
-    excluded_workloads = ["traefik"]
+    excluded_workloads = ["traefik", "kyverno"]
 
     shutdown_count = 0
 
