@@ -19,7 +19,7 @@ crontab==1.0.4
 distlib==0.3.9
 durationpy==0.9
 executing==2.2.0
-fastapi==0.115.2
+fastapi==0.120.0
 fcache==0.5.0
 filelock==3.18.0
 Flask==3.0.0
@@ -36,7 +36,7 @@ importlib_metadata==8.6.1
 iniconfig==2.1.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
-kubernetes==28.1.0
+kubernetes==34.1.0
 loguru==0.7.2
 MarkupSafe==3.0.2
 mmh3==5.1.0
@@ -52,7 +52,7 @@ Pygments==2.19.1
 PyJWT==2.10.1
 pyproject-api==1.9.0
 pytest==8.3.5
-pytest-asyncio==0.26.0
+pytest-asyncio==1.2.0
 python-crontab==3.2.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
@@ -83,5 +83,5 @@ watchfiles==1.0.5
 websocket-client==1.8.0
 websockets==15.0.1
 Werkzeug==3.0.6
-yggdrasil-engine==0.1.4
+yggdrasil-engine==1.0.0
 zipp==3.21.0

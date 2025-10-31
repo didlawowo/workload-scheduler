@@ -239,20 +239,17 @@ def meets_sts_criteria(statefulset, protected_namespaces, protected_labels):
     """
     Vérifie si un StatefulSet répond aux critères de sélection.
     Criteria:
-    - Must have labels
     - Must not be in protected namespaces
-    - Must have the "argocd.argoproj.io/instance" label
+    - Must not have protected labels
     """
-    if statefulset.metadata.labels is None or statefulset.metadata.namespace in protected_namespaces:
+    if statefulset.metadata.namespace in protected_namespaces:
         return False
-        
-    if "argocd.argoproj.io/instance" not in statefulset.metadata.labels:
-        return False
-        
-    for key, value in protected_labels.items():
-        if key in statefulset.metadata.labels and statefulset.metadata.labels[key] == value:
-            return False
-            
+
+    if statefulset.metadata.labels:
+        for key, value in protected_labels.items():
+            if key in statefulset.metadata.labels and statefulset.metadata.labels[key] == value:
+                return False
+
     return True
 
 
