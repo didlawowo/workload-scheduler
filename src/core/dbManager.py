@@ -40,9 +40,9 @@ class DatabaseManager:
                 text("SELECT name FROM sqlite_master WHERE type='table' ")
             )
             tables = result.fetchall()
-            logger.info(f"Tables trouvées: {tables}")
+            logger.debug(f"Tables trouvées: {tables}")
             if len(tables) > 0:
-                logger.info("Tables existantes")
+                logger.debug("Tables existantes")
                 return True
 
             return False
