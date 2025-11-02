@@ -143,6 +143,12 @@ def enable_auto_sync(application_name):
     try:
         logger.debug(f"Application name: {application_name}")
         token_manager = ArgoTokenManager()
+
+        # Skip ArgoCD operations if not configured (dev mode)
+        if not token_manager.ARGOCD_API_URL or token_manager.ARGOCD_API_URL == "http://localhost:8080/api/v1":
+            logger.info(f"ArgoCD not configured (dev mode), skipping auto-sync check for '{application_name}'")
+            return
+
         token = token_manager.get_token()
 
         logger.info(f"Checking auto-sync status for application '{application_name}'")

@@ -76,6 +76,21 @@ def find_active_replicasets(replicasets, deployment_name):
     active_rs.sort(key=lambda x: x.metadata.creation_timestamp, reverse=True)
     return active_rs
 
+def find_active_replicasets_from_list(replicasets_list, deployment_name):
+    """
+    Trouve les ReplicaSets actifs pour un déploiement spécifique depuis une liste.
+    """
+    active_rs = []
+    for rs in replicasets_list:
+        if rs.metadata.owner_references:
+            for owner in rs.metadata.owner_references:
+                if owner.kind == "Deployment" and owner.name == deployment_name:
+                    active_rs.append(rs)
+                    break
+
+    active_rs.sort(key=lambda x: x.metadata.creation_timestamp, reverse=True)
+    return active_rs
+
 def list_all_daemonsets(apps_v1, core_v1, protected_namespaces, protected_labels):
     """
     Returns the status of all DaemonSets in all namespaces, including pod information.
@@ -84,6 +99,12 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces, protected_labels
         logger.info("Fetching all DaemonSets across namespaces")
         daemonsets = apps_v1.list_daemon_set_for_all_namespaces(watch=False)
         logger.debug(f"{len(daemonsets.items)} DaemonSets found in total")
+
+        # Fetch all pods once to avoid N API calls
+        logger.debug("Fetching all pods for DaemonSets")
+        all_pods = core_v1.list_pod_for_all_namespaces(watch=False).items
+        logger.debug(f"Fetched {len(all_pods)} pods")
+
         daemonset_list = []
 
         for ds in daemonsets.items:
@@ -100,7 +121,8 @@ def list_all_daemonsets(apps_v1, core_v1, protected_namespaces, protected_labels
                 continue
 
             logger.debug(f"Processing DaemonSet {ds.metadata.name} in namespace {ds.metadata.namespace}")
-            pods = core_v1.list_namespaced_pod(ds.metadata.namespace).items
+            # Filter pods for this DaemonSet's namespace from pre-fetched data
+            pods = [p for p in all_pods if p.metadata.namespace == ds.metadata.namespace]
             pod_info = filter_pods_by_owner(pods, "DaemonSet", owner_name=ds.metadata.name)
             
             # Get DaemonSet-specific status
@@ -149,6 +171,13 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_label
         logger.info("Fetching all Deployments across namespaces")
         deployments = apps_v1.list_deployment_for_all_namespaces(watch=False)
         logger.debug(f"{len(deployments.items)} deployments found")
+
+        # Fetch all pods and ReplicaSets once to avoid N API calls
+        logger.debug("Fetching all pods and ReplicaSets for deployments")
+        all_pods = core_v1.list_pod_for_all_namespaces(watch=False).items
+        all_replicasets = apps_v1.list_replica_set_for_all_namespaces(watch=False).items
+        logger.debug(f"Fetched {len(all_pods)} pods and {len(all_replicasets)} ReplicaSets")
+
         deployment_list = []
         for d in deployments.items:
             # Skip if not matching our criteria
@@ -168,7 +197,7 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_label
                 continue
                 
             logger.debug(f"Processing Deployment {d.metadata.name} in namespace {d.metadata.namespace}")
-            deployment_info = process_deployment(d, apps_v1, core_v1)
+            deployment_info = process_deployment(d, all_replicasets, all_pods)
             deployment_list.append(deployment_info)
         
         logger.info(f"Processed {len(deployment_list)} Deployments after filtering")
@@ -177,19 +206,25 @@ def list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_label
         logger.error("Error fetching deployments: %s", e)
         return {"status": "error", "message": str(e)}
 
-def process_deployment(deployment, apps_v1, core_v1):
+def process_deployment(deployment, all_replicasets, all_pods):
     """
     Traite un déploiement pour extraire ses informations et celles de ses pods.
+    Uses pre-fetched ReplicaSets and Pods to avoid N API calls.
     """
-    replicasets = apps_v1.list_namespaced_replica_set(
-        deployment.metadata.namespace,
-        label_selector=",".join([f"{k}={v}" for k, v in deployment.spec.selector.match_labels.items()])
-    )
-    logger.debug(f"Found {len(replicasets.items)} ReplicaSets for Deployment {deployment.metadata.name}")
-    
-    active_rs = find_active_replicasets(replicasets, deployment.metadata.name)
-    
-    pods = core_v1.list_namespaced_pod(deployment.metadata.namespace, watch=False).items
+    # Filter ReplicaSets for this deployment from pre-fetched data
+    match_labels = deployment.spec.selector.match_labels
+    deployment_replicasets = [
+        rs for rs in all_replicasets
+        if rs.metadata.namespace == deployment.metadata.namespace
+        and rs.metadata.labels
+        and all(rs.metadata.labels.get(k) == v for k, v in match_labels.items())
+    ]
+    logger.debug(f"Found {len(deployment_replicasets)} ReplicaSets for Deployment {deployment.metadata.name}")
+
+    active_rs = find_active_replicasets_from_list(deployment_replicasets, deployment.metadata.name)
+
+    # Filter pods for this deployment's namespace from pre-fetched data
+    pods = [p for p in all_pods if p.metadata.namespace == deployment.metadata.namespace]
     
     pod_info = []
     for rs in active_rs:
@@ -217,15 +252,21 @@ def list_all_sts(apps_v1, core_v1, protected_namespaces, protected_labels):
         logger.info("Fetching all StatefulSets across namespaces")
         statfull_sts = apps_v1.list_stateful_set_for_all_namespaces(watch=False)
         logger.debug(f"{len(statfull_sts.items)} StatefulSets found")
+
+        # Fetch all pods once to avoid N API calls
+        logger.debug("Fetching all pods for StatefulSets")
+        all_pods = core_v1.list_pod_for_all_namespaces(watch=False).items
+        logger.debug(f"Fetched {len(all_pods)} pods")
+
         sts_list = []
 
         for s in statfull_sts.items:
             if not meets_sts_criteria(s, protected_namespaces, protected_labels):
                 logger.debug(f"Skipping StatefulSet {s.metadata.name} in namespace {s.metadata.namespace}")
                 continue
-                
+
             logger.debug(f"Processing StatefulSet {s.metadata.name} in namespace {s.metadata.namespace}")
-            sts_info = process_statefulset(s, core_v1)
+            sts_info = process_statefulset(s, all_pods)
             sts_list.append(sts_info)
 
         logger.info(f"Processed {len(sts_list)} StatefulSets after filtering")
@@ -253,11 +294,13 @@ def meets_sts_criteria(statefulset, protected_namespaces, protected_labels):
     return True
 
 
-def process_statefulset(statefulset, core_v1):
+def process_statefulset(statefulset, all_pods):
     """
     Traite un StatefulSet pour extraire ses informations et celles de ses pods.
+    Uses pre-fetched pods to avoid N API calls.
     """
-    pods = core_v1.list_namespaced_pod(statefulset.metadata.namespace, watch=False).items
+    # Filter pods for this StatefulSet's namespace from pre-fetched data
+    pods = [p for p in all_pods if p.metadata.namespace == statefulset.metadata.namespace]
     pod_info = filter_pods_by_owner(pods, "StatefulSet", owner_uid=statefulset.metadata.uid)
     
     logger.debug(f"StatefulSet {statefulset.metadata.name} has {len(pod_info)} pods")
