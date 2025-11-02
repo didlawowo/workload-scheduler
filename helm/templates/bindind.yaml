@@ -8,7 +8,7 @@ rules:
   resources: ["pods", "nodes", "namespaces"]
   verbs: ["get", "list"]
 - apiGroups: ["apps"]
-  resources: ["deployments","statefulsets", "deployments/scale", "daemonsets" ]
+  resources: ["deployments","statefulsets", "deployments/scale", "statefulsets/scale", "daemonsets" ]
   verbs: ["get", "list", "patch", "update"]
 - apiGroups: ["apps"]
   resources: ["replicasets"]

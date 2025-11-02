@@ -236,7 +236,7 @@ async def scale_deployment(uid, action_nbr):
                     for argocd_app in argocd_apps:
                         logger.info(f"Deployment '{deploy.metadata.name}' is managed by ArgoCD Application '{argocd_app}', disabling auto-sync before scaling down")
                         try:
-                            enable_auto_sync(argocd_app, enable_auto_sync=False)
+                            enable_auto_sync(argocd_app)
                         except Exception as e:
                             logger.warning(f"Failed to disable ArgoCD auto-sync for '{argocd_app}': {e}. Continuing anyway...")
 
@@ -272,7 +272,7 @@ async def scale_statefulset(uid, action_nbr):
                     for argocd_app in argocd_apps:
                         logger.info(f"StatefulSet '{stateful_set.metadata.name}' is managed by ArgoCD Application '{argocd_app}', disabling auto-sync before scaling down")
                         try:
-                            enable_auto_sync(argocd_app, enable_auto_sync=False)
+                            enable_auto_sync(argocd_app)
                         except Exception as e:
                             logger.warning(f"Failed to disable ArgoCD auto-sync for '{argocd_app}': {e}. Continuing anyway...")
 
