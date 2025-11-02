@@ -1,26 +1,28 @@
 import asyncio
-import platform
-from fastapi import FastAPI, Request
-from loguru import logger
+import json
 import os
-from starlette.templating import Jinja2Templates
+import platform
+import sys
+import warnings
+from typing import List, Optional
+
+import uvicorn
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-import json
 from icecream import ic
+from loguru import logger
 from pydantic import BaseModel
-from typing import List, Optional
-import sys
-import uvicorn
-import warnings
+from starlette.templating import Jinja2Templates
+
 from api.scheduler import scheduler
-from api.workload import workload, health_route
-from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
-from utils.argocd import ArgoTokenManager
-from utils.config import protected_namespaces, protected_labels
-from utils.helpers import apps_v1, core_v1
-from scheduler_engine import SchedulerEngine
+from api.workload import health_route, workload
 from core.dbManager import DatabaseManager
+from core.kub_list import list_all_daemonsets, list_all_deployments, list_all_sts
+from scheduler_engine import SchedulerEngine
+from utils.argocd import ArgoTokenManager
+from utils.config import protected_labels, protected_namespaces
+from utils.helpers import apps_v1, core_v1
 
 os.environ["TZ"] = "Europe/Paris"
 

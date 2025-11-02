@@ -226,18 +226,19 @@ async def scale_deployment(uid, action_nbr):
                 from utils.argocd import find_argocd_application_for_resource, enable_auto_sync
 
                 labels_dict = deploy.metadata.labels if deploy.metadata.labels else {}
-                argocd_app = find_argocd_application_for_resource(
+                argocd_apps = find_argocd_application_for_resource(
                     resource_name=deploy.metadata.name,
                     resource_namespace=deploy.metadata.namespace,
                     resource_labels=labels_dict
                 )
 
-                if argocd_app:
-                    logger.info(f"Deployment '{deploy.metadata.name}' is managed by ArgoCD Application '{argocd_app}', disabling auto-sync before scaling down")
-                    try:
-                        enable_auto_sync(argocd_app)
-                    except Exception as e:
-                        logger.warning(f"Failed to disable ArgoCD auto-sync for '{argocd_app}': {e}. Continuing anyway...")
+                if argocd_apps:
+                    for argocd_app in argocd_apps:
+                        logger.info(f"Deployment '{deploy.metadata.name}' is managed by ArgoCD Application '{argocd_app}', disabling auto-sync before scaling down")
+                        try:
+                            enable_auto_sync(argocd_app, enable_auto_sync=False)
+                        except Exception as e:
+                            logger.warning(f"Failed to disable ArgoCD auto-sync for '{argocd_app}': {e}. Continuing anyway...")
 
             # ic(deploy.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}
@@ -261,18 +262,19 @@ async def scale_statefulset(uid, action_nbr):
                 from utils.argocd import find_argocd_application_for_resource, enable_auto_sync
 
                 labels_dict = stateful_set.metadata.labels if stateful_set.metadata.labels else {}
-                argocd_app = find_argocd_application_for_resource(
+                argocd_apps = find_argocd_application_for_resource(
                     resource_name=stateful_set.metadata.name,
                     resource_namespace=stateful_set.metadata.namespace,
                     resource_labels=labels_dict
                 )
 
-                if argocd_app:
-                    logger.info(f"StatefulSet '{stateful_set.metadata.name}' is managed by ArgoCD Application '{argocd_app}', disabling auto-sync before scaling down")
-                    try:
-                        enable_auto_sync(argocd_app)
-                    except Exception as e:
-                        logger.warning(f"Failed to disable ArgoCD auto-sync for '{argocd_app}': {e}. Continuing anyway...")
+                if argocd_apps:
+                    for argocd_app in argocd_apps:
+                        logger.info(f"StatefulSet '{stateful_set.metadata.name}' is managed by ArgoCD Application '{argocd_app}', disabling auto-sync before scaling down")
+                        try:
+                            enable_auto_sync(argocd_app, enable_auto_sync=False)
+                        except Exception as e:
+                            logger.warning(f"Failed to disable ArgoCD auto-sync for '{argocd_app}': {e}. Continuing anyway...")
 
             # ic(stateful_set.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}

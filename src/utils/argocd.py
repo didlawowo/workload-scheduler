@@ -128,16 +128,16 @@ class ArgoTokenManager:
             logger.error(f"Error verifying token: {e}")
             return self._authenticate()
         
-def find_argocd_application_for_resource(resource_name: str, resource_namespace: str, resource_labels: dict) -> Optional[str]:
+def find_argocd_application_for_resource(resource_name: str, resource_namespace: str, resource_labels: dict) -> list[str]:
     """
-    Find the ArgoCD Application managing this resource.
+    Find the ArgoCD Application(s) managing this resource.
 
-    Returns the Application name if found, None otherwise.
+    Returns a list of Application names. Can be empty, single, or multiple Applications.
 
     Logic:
     1. Check for argocd.argoproj.io/instance label (explicit ArgoCD label)
     2. Check for app.kubernetes.io/instance label and find matching Application
-    3. Query Kubernetes API for Applications in kube-infra namespace
+    3. Fallback: match by namespace for all Applications with selfHeal enabled
     """
     try:
         from kubernetes import client, config
@@ -150,7 +150,7 @@ def find_argocd_application_for_resource(resource_name: str, resource_namespace:
 
         # Check for explicit ArgoCD label first
         if resource_labels and "argocd.argoproj.io/instance" in resource_labels:
-            return resource_labels["argocd.argoproj.io/instance"]
+            return [resource_labels["argocd.argoproj.io/instance"]]
 
         # Query ArgoCD Applications via Kubernetes API
         custom_api = client.CustomObjectsApi()
@@ -167,22 +167,40 @@ def find_argocd_application_for_resource(resource_name: str, resource_namespace:
                 instance_name = resource_labels["app.kubernetes.io/instance"]
 
                 # Find Application that matches this resource by instance name
+                # Priority: exact match > suffix match > substring match
+                exact_match = None
+                suffix_match = None
+
                 for app in applications.get("items", []):
                     app_name = app["metadata"]["name"]
                     app_spec = app.get("spec", {})
                     app_dest_ns = app_spec.get("destination", {}).get("namespace", "")
 
-                    # Match if:
-                    # 1. Destination namespace matches resource namespace
-                    # 2. Application name contains instance name OR instance name contains app name
-                    if app_dest_ns == resource_namespace:
-                        if instance_name in app_name or app_name in instance_name or instance_name == app_name:
-                            logger.info(f"Found ArgoCD Application '{app_name}' managing resource '{resource_name}' in namespace '{resource_namespace}'")
-                            return app_name
-                        # Also check if the app name ends with the instance name (e.g. in-cluster-portal-checker vs portal-checker)
-                        if app_name.endswith(instance_name):
-                            logger.info(f"Found ArgoCD Application '{app_name}' managing resource '{resource_name}' in namespace '{resource_namespace}'")
-                            return app_name
+                    # Only consider Applications in the same namespace
+                    if app_dest_ns != resource_namespace:
+                        continue
+
+                    logger.info(f"Checking Application '{app_name}' against instance '{instance_name}' in namespace '{resource_namespace}'")
+
+                    # Exact match has highest priority
+                    if app_name == instance_name:
+                        logger.info(f"✅ Exact match found: '{app_name}' == '{instance_name}'")
+                        exact_match = app_name
+                        break
+
+                    # Suffix match (e.g. in-cluster-portal-checker matches portal-checker)
+                    # IMPORTANT: Only match if there's a delimiter before the instance name
+                    if app_name.endswith("-" + instance_name):
+                        logger.info(f"📌 Suffix match found: '{app_name}'.endswith('-{instance_name}')")
+                        suffix_match = app_name
+
+                # Return the best match found
+                if exact_match:
+                    logger.info(f"Found ArgoCD Application '{exact_match}' managing resource '{resource_name}' (exact match)")
+                    return [exact_match]
+                if suffix_match:
+                    logger.info(f"Found ArgoCD Application '{suffix_match}' managing resource '{resource_name}' (suffix match)")
+                    return [suffix_match]
 
             # Fallback: search by namespace only and check if Application has automated selfHeal enabled
             # This handles cases where resources don't have standard labels
@@ -201,19 +219,19 @@ def find_argocd_application_for_resource(resource_name: str, resource_namespace:
             if len(matching_apps) == 1:
                 # Only one Application manages this namespace with selfHeal - safe to assume it's the one
                 logger.info(f"Found ArgoCD Application '{matching_apps[0]}' managing namespace '{resource_namespace}' (matched by namespace only)")
-                return matching_apps[0]
+                return matching_apps
             elif len(matching_apps) > 1:
-                logger.warning(f"Multiple ArgoCD Applications found for namespace '{resource_namespace}': {matching_apps}. Cannot determine which one manages '{resource_name}'")
-                return None
+                logger.warning(f"Multiple ArgoCD Applications found for namespace '{resource_namespace}': {matching_apps}. Will disable auto-sync for all of them.")
+                return matching_apps
 
         except Exception as e:
             logger.warning(f"Failed to query ArgoCD Applications: {e}")
-            return None
+            return []
 
-        return None
+        return []
     except Exception as e:
         logger.error(f"Error finding ArgoCD Application: {e}")
-        return None
+        return []
 
 def handle_argocd_auto_sync(resource):
     token_manager = ArgoTokenManager()
