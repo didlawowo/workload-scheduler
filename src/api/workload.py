@@ -221,15 +221,23 @@ async def scale_deployment(uid, action_nbr):
     c = apps_v1.list_deployment_for_all_namespaces()
     for deploy in c.items:
         if deploy.metadata.uid == uid:
-            # Check if deployment has ArgoCD auto-sync and disable it before scaling down
-            if action_nbr == 0 and deploy.metadata.labels and "argocd.argoproj.io/instance" in deploy.metadata.labels:
-                from utils.argocd import enable_auto_sync
-                instance_name = deploy.metadata.labels["argocd.argoproj.io/instance"]
-                logger.info(f"Deployment '{deploy.metadata.name}' has ArgoCD auto-sync, disabling it before scaling down")
-                try:
-                    enable_auto_sync(instance_name)
-                except Exception as e:
-                    logger.warning(f"Failed to disable ArgoCD auto-sync for '{instance_name}': {e}. Continuing anyway...")
+            # Check if deployment is managed by ArgoCD and disable auto-sync before scaling down
+            if action_nbr == 0 and deploy.metadata.labels:
+                from utils.argocd import find_argocd_application_for_resource, enable_auto_sync
+
+                labels_dict = deploy.metadata.labels if deploy.metadata.labels else {}
+                argocd_app = find_argocd_application_for_resource(
+                    resource_name=deploy.metadata.name,
+                    resource_namespace=deploy.metadata.namespace,
+                    resource_labels=labels_dict
+                )
+
+                if argocd_app:
+                    logger.info(f"Deployment '{deploy.metadata.name}' is managed by ArgoCD Application '{argocd_app}', disabling auto-sync before scaling down")
+                    try:
+                        enable_auto_sync(argocd_app)
+                    except Exception as e:
+                        logger.warning(f"Failed to disable ArgoCD auto-sync for '{argocd_app}': {e}. Continuing anyway...")
 
             # ic(deploy.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}
@@ -248,15 +256,23 @@ async def scale_statefulset(uid, action_nbr):
     c = apps_v1.list_stateful_set_for_all_namespaces()
     for stateful_set in c.items:
         if stateful_set.metadata.uid == uid:
-            # Check if statefulset has ArgoCD auto-sync and disable it before scaling down
-            if action_nbr == 0 and stateful_set.metadata.labels and "argocd.argoproj.io/instance" in stateful_set.metadata.labels:
-                from utils.argocd import enable_auto_sync
-                instance_name = stateful_set.metadata.labels["argocd.argoproj.io/instance"]
-                logger.info(f"StatefulSet '{stateful_set.metadata.name}' has ArgoCD auto-sync, disabling it before scaling down")
-                try:
-                    enable_auto_sync(instance_name)
-                except Exception as e:
-                    logger.warning(f"Failed to disable ArgoCD auto-sync for '{instance_name}': {e}. Continuing anyway...")
+            # Check if statefulset is managed by ArgoCD and disable auto-sync before scaling down
+            if action_nbr == 0 and stateful_set.metadata.labels:
+                from utils.argocd import find_argocd_application_for_resource, enable_auto_sync
+
+                labels_dict = stateful_set.metadata.labels if stateful_set.metadata.labels else {}
+                argocd_app = find_argocd_application_for_resource(
+                    resource_name=stateful_set.metadata.name,
+                    resource_namespace=stateful_set.metadata.namespace,
+                    resource_labels=labels_dict
+                )
+
+                if argocd_app:
+                    logger.info(f"StatefulSet '{stateful_set.metadata.name}' is managed by ArgoCD Application '{argocd_app}', disabling auto-sync before scaling down")
+                    try:
+                        enable_auto_sync(argocd_app)
+                    except Exception as e:
+                        logger.warning(f"Failed to disable ArgoCD auto-sync for '{argocd_app}': {e}. Continuing anyway...")
 
             # ic(stateful_set.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}

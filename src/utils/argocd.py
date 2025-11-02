@@ -128,10 +128,75 @@ class ArgoTokenManager:
             logger.error(f"Error verifying token: {e}")
             return self._authenticate()
         
+def find_argocd_application_for_resource(resource_name: str, resource_namespace: str, resource_labels: dict) -> Optional[str]:
+    """
+    Find the ArgoCD Application managing this resource.
+
+    Returns the Application name if found, None otherwise.
+
+    Logic:
+    1. Check for argocd.argoproj.io/instance label (explicit ArgoCD label)
+    2. Check for app.kubernetes.io/instance label and find matching Application
+    3. Query Kubernetes API for Applications in kube-infra namespace
+    """
+    try:
+        from kubernetes import client, config
+
+        # Try to load kubernetes config
+        try:
+            config.load_incluster_config()
+        except:
+            config.load_kube_config()
+
+        # Check for explicit ArgoCD label first
+        if resource_labels and "argocd.argoproj.io/instance" in resource_labels:
+            return resource_labels["argocd.argoproj.io/instance"]
+
+        # Check for app.kubernetes.io/instance label
+        if resource_labels and "app.kubernetes.io/instance" in resource_labels:
+            instance_name = resource_labels["app.kubernetes.io/instance"]
+
+            # Query ArgoCD Applications via Kubernetes API
+            custom_api = client.CustomObjectsApi()
+            try:
+                applications = custom_api.list_namespaced_custom_object(
+                    group="argoproj.io",
+                    version="v1alpha1",
+                    namespace="kube-infra",
+                    plural="applications"
+                )
+
+                # Find Application that matches this resource
+                for app in applications.get("items", []):
+                    app_name = app["metadata"]["name"]
+                    app_spec = app.get("spec", {})
+                    app_dest_ns = app_spec.get("destination", {}).get("namespace", "")
+
+                    # Match if:
+                    # 1. Destination namespace matches resource namespace
+                    # 2. Application name contains instance name OR instance name contains app name
+                    if app_dest_ns == resource_namespace:
+                        if instance_name in app_name or app_name in instance_name or instance_name == app_name:
+                            logger.info(f"Found ArgoCD Application '{app_name}' managing resource '{resource_name}' in namespace '{resource_namespace}'")
+                            return app_name
+                        # Also check if the app name ends with the instance name (e.g. in-cluster-portal-checker vs portal-checker)
+                        if app_name.endswith(instance_name):
+                            logger.info(f"Found ArgoCD Application '{app_name}' managing resource '{resource_name}' in namespace '{resource_namespace}'")
+                            return app_name
+
+            except Exception as e:
+                logger.warning(f"Failed to query ArgoCD Applications: {e}")
+                return None
+
+        return None
+    except Exception as e:
+        logger.error(f"Error finding ArgoCD Application: {e}")
+        return None
+
 def handle_argocd_auto_sync(resource):
     token_manager = ArgoTokenManager()
     if (token_manager.ARGOCD_API_URL and resource.metadata.labels and "argocd.argoproj.io/instance" in resource.metadata.labels):
-        
+
         instance_name = resource.metadata.labels["argocd.argoproj.io/instance"]
         enable_auto_sync(instance_name)
 
