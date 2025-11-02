@@ -13,6 +13,9 @@ rules:
 - apiGroups: ["apps"]
   resources: ["replicasets"]
   verbs: ["get", "list", "patch", "delete"]
+- apiGroups: ["argoproj.io"]
+  resources: ["applications"]
+  verbs: ["get", "list", "patch", "update"]
 
 ---
 # Role binding definition (e.g., ingress-reader-binding.yaml)
