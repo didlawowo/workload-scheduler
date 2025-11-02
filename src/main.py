@@ -115,7 +115,7 @@ if os.getenv("UNLEASH_API_URL"):
 
 
 # Get the version from the environment variable
-version = "2.3.3"  #
+version = "2.4.0"  #
 logger.info(f"Version: {version}")
 
 templates_dir = os.path.join(BASE_DIR, "templates")
