@@ -152,21 +152,21 @@ def find_argocd_application_for_resource(resource_name: str, resource_namespace:
         if resource_labels and "argocd.argoproj.io/instance" in resource_labels:
             return resource_labels["argocd.argoproj.io/instance"]
 
-        # Check for app.kubernetes.io/instance label
-        if resource_labels and "app.kubernetes.io/instance" in resource_labels:
-            instance_name = resource_labels["app.kubernetes.io/instance"]
+        # Query ArgoCD Applications via Kubernetes API
+        custom_api = client.CustomObjectsApi()
+        try:
+            applications = custom_api.list_namespaced_custom_object(
+                group="argoproj.io",
+                version="v1alpha1",
+                namespace="kube-infra",
+                plural="applications"
+            )
 
-            # Query ArgoCD Applications via Kubernetes API
-            custom_api = client.CustomObjectsApi()
-            try:
-                applications = custom_api.list_namespaced_custom_object(
-                    group="argoproj.io",
-                    version="v1alpha1",
-                    namespace="kube-infra",
-                    plural="applications"
-                )
+            # Check for app.kubernetes.io/instance label
+            if resource_labels and "app.kubernetes.io/instance" in resource_labels:
+                instance_name = resource_labels["app.kubernetes.io/instance"]
 
-                # Find Application that matches this resource
+                # Find Application that matches this resource by instance name
                 for app in applications.get("items", []):
                     app_name = app["metadata"]["name"]
                     app_spec = app.get("spec", {})
@@ -184,9 +184,31 @@ def find_argocd_application_for_resource(resource_name: str, resource_namespace:
                             logger.info(f"Found ArgoCD Application '{app_name}' managing resource '{resource_name}' in namespace '{resource_namespace}'")
                             return app_name
 
-            except Exception as e:
-                logger.warning(f"Failed to query ArgoCD Applications: {e}")
+            # Fallback: search by namespace only and check if Application has automated selfHeal enabled
+            # This handles cases where resources don't have standard labels
+            matching_apps = []
+            for app in applications.get("items", []):
+                app_name = app["metadata"]["name"]
+                app_spec = app.get("spec", {})
+                app_dest_ns = app_spec.get("destination", {}).get("namespace", "")
+                sync_policy = app_spec.get("syncPolicy", {})
+                automated = sync_policy.get("automated", {})
+
+                # Match if destination namespace matches AND selfHeal is enabled
+                if app_dest_ns == resource_namespace and automated.get("selfHeal"):
+                    matching_apps.append(app_name)
+
+            if len(matching_apps) == 1:
+                # Only one Application manages this namespace with selfHeal - safe to assume it's the one
+                logger.info(f"Found ArgoCD Application '{matching_apps[0]}' managing namespace '{resource_namespace}' (matched by namespace only)")
+                return matching_apps[0]
+            elif len(matching_apps) > 1:
+                logger.warning(f"Multiple ArgoCD Applications found for namespace '{resource_namespace}': {matching_apps}. Cannot determine which one manages '{resource_name}'")
                 return None
+
+        except Exception as e:
+            logger.warning(f"Failed to query ArgoCD Applications: {e}")
+            return None
 
         return None
     except Exception as e:
