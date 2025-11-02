@@ -214,15 +214,20 @@ def patch_argocd_application(app_name, enable_auto_sync):
             logger.info("enabling auto sync")
             if "syncPolicy" not in app_config["spec"]:
                 app_config["spec"]["syncPolicy"] = {}
-            app_config["spec"]["syncPolicy"]["automated"] = {
-                "prune": True,
-                "selfHeal": True,
-            }
+            if "automated" not in app_config["spec"]["syncPolicy"]:
+                app_config["spec"]["syncPolicy"]["automated"] = {}
+            app_config["spec"]["syncPolicy"]["automated"]["enabled"] = True
+            app_config["spec"]["syncPolicy"]["automated"]["prune"] = True
+            app_config["spec"]["syncPolicy"]["automated"]["selfHeal"] = True
             logger.debug(app_config["spec"])
         else:
             logger.info("disabling auto sync")
-            if "syncPolicy" in app_config["spec"] and "automated" in app_config["spec"]["syncPolicy"]:
-                del app_config["spec"]["syncPolicy"]["automated"]
+            if "syncPolicy" not in app_config["spec"]:
+                app_config["spec"]["syncPolicy"] = {}
+            if "automated" not in app_config["spec"]["syncPolicy"]:
+                app_config["spec"]["syncPolicy"]["automated"] = {}
+            # Use enabled=false instead of deleting the automated section
+            app_config["spec"]["syncPolicy"]["automated"]["enabled"] = False
             logger.debug(app_config["spec"])
 
         logger.info(f" app name {app_name}")

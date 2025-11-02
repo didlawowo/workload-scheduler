@@ -221,6 +221,16 @@ async def scale_deployment(uid, action_nbr):
     c = apps_v1.list_deployment_for_all_namespaces()
     for deploy in c.items:
         if deploy.metadata.uid == uid:
+            # Check if deployment has ArgoCD auto-sync and disable it before scaling down
+            if action_nbr == 0 and deploy.metadata.labels and "argocd.argoproj.io/instance" in deploy.metadata.labels:
+                from utils.argocd import enable_auto_sync
+                instance_name = deploy.metadata.labels["argocd.argoproj.io/instance"]
+                logger.info(f"Deployment '{deploy.metadata.name}' has ArgoCD auto-sync, disabling it before scaling down")
+                try:
+                    enable_auto_sync(instance_name)
+                except Exception as e:
+                    logger.warning(f"Failed to disable ArgoCD auto-sync for '{instance_name}': {e}. Continuing anyway...")
+
             # ic(deploy.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}
             apps_v1.patch_namespaced_deployment_scale(
@@ -238,6 +248,16 @@ async def scale_statefulset(uid, action_nbr):
     c = apps_v1.list_stateful_set_for_all_namespaces()
     for stateful_set in c.items:
         if stateful_set.metadata.uid == uid:
+            # Check if statefulset has ArgoCD auto-sync and disable it before scaling down
+            if action_nbr == 0 and stateful_set.metadata.labels and "argocd.argoproj.io/instance" in stateful_set.metadata.labels:
+                from utils.argocd import enable_auto_sync
+                instance_name = stateful_set.metadata.labels["argocd.argoproj.io/instance"]
+                logger.info(f"StatefulSet '{stateful_set.metadata.name}' has ArgoCD auto-sync, disabling it before scaling down")
+                try:
+                    enable_auto_sync(instance_name)
+                except Exception as e:
+                    logger.warning(f"Failed to disable ArgoCD auto-sync for '{instance_name}': {e}. Continuing anyway...")
+
             # ic(stateful_set.metadata.uid)
             body = {"spec": {"replicas": action_nbr}}
             apps_v1.patch_namespaced_stateful_set_scale(
