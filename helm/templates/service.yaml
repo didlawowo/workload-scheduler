@@ -7,7 +7,9 @@ metadata:
   labels: {{- include "application.labels" . | nindent 4 }}
   namespace: {{ .Release.Namespace }}
 spec:
-  selector: {{- include "application.selectorLabels" . | nindent 4 }}
+  selector:
+    {{- include "application.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
   ports:
   - name: {{ .Values.service.portName }}
     targetPort: {{ .Values.service.targetPort }}
