@@ -180,26 +180,22 @@ def find_argocd_application_for_resource(resource_name: str, resource_namespace:
                     if app_dest_ns != resource_namespace:
                         continue
 
-                    logger.info(f"Checking Application '{app_name}' against instance '{instance_name}' in namespace '{resource_namespace}'")
-
                     # Exact match has highest priority
                     if app_name == instance_name:
-                        logger.info(f"✅ Exact match found: '{app_name}' == '{instance_name}'")
                         exact_match = app_name
                         break
 
                     # Suffix match (e.g. in-cluster-portal-checker matches portal-checker)
                     # IMPORTANT: Only match if there's a delimiter before the instance name
                     if app_name.endswith("-" + instance_name):
-                        logger.info(f"📌 Suffix match found: '{app_name}'.endswith('-{instance_name}')")
                         suffix_match = app_name
 
                 # Return the best match found
                 if exact_match:
-                    logger.info(f"Found ArgoCD Application '{exact_match}' managing resource '{resource_name}' (exact match)")
+                    logger.info(f"Found ArgoCD Application '{exact_match}' managing resource '{resource_name}' in namespace '{resource_namespace}'")
                     return [exact_match]
                 if suffix_match:
-                    logger.info(f"Found ArgoCD Application '{suffix_match}' managing resource '{resource_name}' (suffix match)")
+                    logger.info(f"Found ArgoCD Application '{suffix_match}' managing resource '{resource_name}' in namespace '{resource_namespace}'")
                     return [suffix_match]
 
             # Fallback: search by namespace only and check if Application has automated selfHeal enabled
