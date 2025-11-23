@@ -5,7 +5,7 @@ replicaCount: 1
 image:
   repository: fizzbuzz2/workload-scheduler
   pullPolicy: IfNotPresent
-  tag: "ddd99a1"
+  tag: "32b93c1"
 nameOverride: ""
 fullnameOverride: ""
 serviceAccount:
