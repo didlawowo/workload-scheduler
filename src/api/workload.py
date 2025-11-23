@@ -223,7 +223,10 @@ async def scale_deployment(uid, action_nbr):
         if deploy.metadata.uid == uid:
             # Check if deployment is managed by ArgoCD and disable auto-sync before scaling down
             if action_nbr == 0 and deploy.metadata.labels:
-                from utils.argocd import find_argocd_application_for_resource, enable_auto_sync
+                from utils.argocd import (
+                    enable_auto_sync,
+                    find_argocd_application_for_resource,
+                )
 
                 labels_dict = deploy.metadata.labels if deploy.metadata.labels else {}
                 argocd_apps = find_argocd_application_for_resource(
@@ -259,7 +262,10 @@ async def scale_statefulset(uid, action_nbr):
         if stateful_set.metadata.uid == uid:
             # Check if statefulset is managed by ArgoCD and disable auto-sync before scaling down
             if action_nbr == 0 and stateful_set.metadata.labels:
-                from utils.argocd import find_argocd_application_for_resource, enable_auto_sync
+                from utils.argocd import (
+                    enable_auto_sync,
+                    find_argocd_application_for_resource,
+                )
 
                 labels_dict = stateful_set.metadata.labels if stateful_set.metadata.labels else {}
                 argocd_apps = find_argocd_application_for_resource(

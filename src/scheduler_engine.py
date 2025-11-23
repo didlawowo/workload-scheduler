@@ -1,13 +1,18 @@
 import asyncio
-from datetime import datetime
-import pytz
-from loguru import logger
-from croniter import croniter
-from core.models import WorkloadSchedule, ScheduleStatus
-from utils.helpers import RetryableAsyncClient
 import os
+from datetime import datetime
+
+import pytz
+from croniter import croniter
 from icecream import ic  # noqa: F401
-from types import SimpleNamespace
+from loguru import logger
+
+from core.models import ScheduleStatus, WorkloadSchedule
+from utils.helpers import RetryableAsyncClient
+from utils.logging_config import configure_logger
+
+# Configure logger with JSON format for Datadog
+configure_logger(service_name="workload-scheduler", component="scheduler")
 
 
 class SchedulerEngine:
@@ -18,6 +23,7 @@ class SchedulerEngine:
         check_interval: Intervalle (en secondes) entre chaque vérification des programmations
         running: Indicateur si le scheduleur est en cours d'exécution
         _task: Tâche asyncio pour le processus en arrière-plan
+        api_url: URL de l'API workload-scheduler
     """
 
     def __init__(self, check_interval: int = 60):
@@ -30,7 +36,8 @@ class SchedulerEngine:
         self.check_interval = check_interval
         self.running = False
         self._task = None
-        self.timezone = pytz.timezone(os.getenv("TIMEZONE", "Europe/Paris"))  
+        self.timezone = pytz.timezone(os.getenv("TIMEZONE", "Europe/Paris"))
+        self.api_url = os.getenv("API_URL", "http://localhost:8000")
         self.client = RetryableAsyncClient()
 
     async def start(self):
@@ -86,23 +93,23 @@ class SchedulerEngine:
         Vérifie toutes les programmations et exécute les actions nécessaires.
         """
         try:
-            schedules = await self.client.get(url=f"{os.getenv('API_URL')}/schedules")
+            schedules = await self.client.get(url=f"{self.api_url}/schedules")
             schedules_dict = schedules.json()
-            
+
             logger.info(f"Vérification de {len(schedules_dict)} programmations à {datetime.now(self.timezone).strftime('%H:%M:%S')}")
-            
+
             if not schedules_dict:
                 logger.info("Aucune programmation trouvée dans la base de données")
                 return
-                
-            # Convertir les dictionnaires en SimpleNamespace
-            schedule_object = [SimpleNamespace(**item) for item in schedules_dict]
-            
+
+            # Convertir les dictionnaires en objets WorkloadSchedule
+            schedule_objects = [WorkloadSchedule.from_api_response(item) for item in schedules_dict]
+
             now = datetime.now(self.timezone)
-            
-            for schedule in schedule_object:
+
+            for schedule in schedule_objects:
                 await self._process_schedule(schedule, now)
-                
+
         except Exception as e:
             logger.error(f"Erreur lors de la vérification des programmations: {e}")
             logger.exception(e)
@@ -148,12 +155,12 @@ class SchedulerEngine:
             )
             logger.exception(e)
 
-    def _should_execute(self, cron_expression: str, now: datetime) -> bool:
+    def _should_execute(self, cron_expression: str | None, now: datetime) -> bool:
         """
         Vérifie si une expression cron doit être exécutée.
 
         Args:
-            cron_expression: L'expression cron à vérifier
+            cron_expression: L'expression cron à vérifier (peut être None)
             now: L'heure actuelle
         Returns:
             True si l'expression doit être exécutée, False sinon
@@ -193,10 +200,10 @@ class SchedulerEngine:
         """
         try:
             logger.info(f"🚀 Démarrage du workload: {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})")
-            
-            result = await self.client.get(url=f"{os.getenv('API_URL')}/manage/up/deploy/{schedule.uid}")
+
+            result = await self.client.get(url=f"{self.api_url}/manage/up/deploy/{schedule.uid}")
             result_data = result.json()
-            
+
             if result_data.get("status") == "success":
                 # Créer un dictionnaire pour la mise à jour
                 update_data = {
@@ -206,9 +213,9 @@ class SchedulerEngine:
                     "cron_start": schedule.cron_start if hasattr(schedule, 'cron_start') else None,
                     "cron_stop": schedule.cron_stop if hasattr(schedule, 'cron_stop') else None
                 }
-                
+
                 await self.client.put(
-                    url=f"{os.getenv('API_URL')}/schedules/{schedule.id}",
+                    url=f"{self.api_url}/schedules/{schedule.id}",
                     json=update_data
                 )
                 logger.success(f"✅ Workload démarré avec succès: {schedule.name}")
@@ -230,9 +237,9 @@ class SchedulerEngine:
             logger.info(
                 f"🛑 Arrêt du workload: {schedule.name} (ID: {schedule.id}, UID: {schedule.uid})"
             )
-            
+
             result = await self.client.get(
-                url=f"{os.getenv('API_URL')}/manage/down/deploy/{schedule.uid}"
+                url=f"{self.api_url}/manage/down/deploy/{schedule.uid}"
             )
             result_data = result.json()
 
@@ -244,9 +251,9 @@ class SchedulerEngine:
                     "cron_start": schedule.cron_start if hasattr(schedule, 'cron_start') else None,
                     "cron_stop": schedule.cron_stop if hasattr(schedule, 'cron_stop') else None
                 }
-                
+
                 await self.client.put(
-                    url=f"{os.getenv('API_URL')}/schedules/{schedule.id}",
+                    url=f"{self.api_url}/schedules/{schedule.id}",
                     json=update_data,
                 )
                 logger.success(
