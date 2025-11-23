@@ -1,10 +1,8 @@
 import asyncio
-import json
 import os
 import platform
-import sys
 import warnings
-from typing import List, Optional
+from typing import List
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -23,61 +21,12 @@ from scheduler_engine import SchedulerEngine
 from utils.argocd import ArgoTokenManager
 from utils.config import protected_labels, protected_namespaces
 from utils.helpers import apps_v1, core_v1
+from utils.logging_config import configure_logger
 
 os.environ["TZ"] = "Europe/Paris"
 
-# Configure logging with environment variable
-# Valid options: TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
-log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-
-# Validate log level
-valid_log_levels = ["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
-if log_level not in valid_log_levels:
-    print(f"Invalid LOG_LEVEL: {log_level}. Using INFO as default.")
-    log_level = "INFO"
-
-# Configure logger
-logger.remove()
-logger.add(sys.stderr, level=log_level)
-
-def formatter(record):
-    """
-    Fonction de formatage personnalisée pour structurer les logs Loguru de manière compatible avec Datadog.
-    Cette fonction transforme directement le record en une chaîne JSON sans utiliser de format intermédiaire.
-    """
-    # Création de la structure de log directement à partir des données du record
-    log_data = {
-        "timestamp": record["time"].timestamp() * 1000,
-        "level": record["level"].name,
-        "message": record["message"],
-        "service": "workload-scheduler",
-        "logger": {
-            "name": record["name"],
-            "method": record["function"],
-            "file": record["file"].name,
-            "line": record["line"],
-        },
-        "process": {"pid": record["process"].id, "thread_name": record["thread"].name},
-    }
-
-    return json.dumps(log_data)
-
-
-# Suppression des handlers existants pour éviter tout conflit
-# logger.remove()
-
-# # Ajout du nouveau handler avec le formateur personnalisé
-# # Notez l'utilisation de format="{message}" qui laisse notre formateur gérer la structure complète
-# logger.add(
-#     sys.stdout,
-#     format="{message}",  # Format minimal
-#     serialize=False,  # Désactivation de la sérialisation automatique
-#     colorize=False,  # Désactivation de la coloration pour éviter les caractères d'échappement
-#     catch=True,  # Capture les erreurs de logging
-# )
-
-# Configuration du handler pour utiliser notre formateur
-# logger = logger.patch(lambda record: record.update(message=formatter(record)))
+# Configure logger with JSON format for Datadog
+configure_logger(service_name="workload-scheduler", component="api")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -101,13 +50,14 @@ logger.info("Starting the application...")
 def custom_fallback(feature_name: str, context: dict) -> bool:
     return False
 
-if os.getenv("UNLEASH_API_URL"):
+unleash_api_url = os.getenv("UNLEASH_API_URL")
+if unleash_api_url:
     from UnleashClient import UnleashClient
     logger.info("Unleash client initialized.")
     unleashClient = UnleashClient(
-        url=os.getenv("UNLEASH_API_URL"),
+        url=unleash_api_url,
         app_name="workload-scheduler",
-        custom_headers={"Authorization": os.getenv("UNLEASH_API_TOKEN")},
+        custom_headers={"Authorization": os.getenv("UNLEASH_API_TOKEN", "")},
     )
     warnings.filterwarnings("ignore", category=UserWarning, module="unleash")
 
@@ -146,7 +96,7 @@ async def init_argocd_token():
         logger.warning("ARGOCD_API_URL not set, skipping token initialization")
 
 # Déterminer l'environnement (développement ou production)
-is_dev = os.environ.get("APP_ENV", "development").lower() == "development"
+is_dev = os.getenv("APP_ENV", "development").lower() == "development"
 
 async def init_database():
     """Initialise la base de données et stocke les UIDs des workloads"""
@@ -159,17 +109,31 @@ async def init_database():
         deployment_list = list_all_deployments(apps_v1, core_v1, protected_namespaces, protected_labels)
         sts_list = list_all_sts(apps_v1, core_v1, protected_namespaces, protected_labels)
         ds_list = list_all_daemonsets(apps_v1, core_v1, protected_namespaces, protected_labels)
-        
+
+        # Vérifier que les listes sont bien des listes et non des dicts d'erreur
+        if isinstance(deployment_list, dict) or isinstance(sts_list, dict) or isinstance(ds_list, dict):
+            logger.error("Error fetching workloads from Kubernetes API")
+            return
+
         logger.success(
             f"Deployments: {len(deployment_list)}, StatFulSets: {len(sts_list)}, DaemonSets: {len(ds_list)}"
         )
-        
+
         for dep in deployment_list:
-            await db.store_uid(dep.get("uid"), dep.get('name'))
+            uid = dep.get("uid")
+            name = dep.get("name")
+            if uid and name and isinstance(uid, str) and isinstance(name, str):
+                await db.store_uid(uid, name)
         for sts in sts_list:
-            await db.store_uid(sts.get("uid"), sts.get('name'))
+            uid = sts.get("uid")
+            name = sts.get("name")
+            if uid and name and isinstance(uid, str) and isinstance(name, str):
+                await db.store_uid(uid, name)
         for ds in ds_list:
-            await db.store_uid(ds.get("uid"), ds.get('name'))
+            uid = ds.get("uid")
+            name = ds.get("name")
+            if uid and name and isinstance(uid, str) and isinstance(name, str):
+                await db.store_uid(uid, name)
         logger.success("UIDs stored in database.")
     except Exception as e:
         logger.error(f"Error initializing database: {str(e)}")

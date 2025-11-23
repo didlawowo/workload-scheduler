@@ -66,6 +66,8 @@ scheduler:
       memory: 64Mi
 # Environment variables
 env:
+  - name: LOG_LEVEL
+    value: "INFO"
   - name: API_URL
     value: "http://workload-scheduler.workload-scheduler.svc.cluster.local:8000"
   - name: ARGOCD_USERNAME

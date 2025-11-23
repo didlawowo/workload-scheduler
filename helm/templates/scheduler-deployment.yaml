@@ -21,8 +21,8 @@ spec:
         {{- include "application.labels" . | nindent 8 }}
         app.kubernetes.io/component: scheduler
       annotations:
-        ad.datadoghq.com/tags: '{"appName":"workdload-scheduler","component":"scheduler"}'
-        ad.datadoghq.com/workload-scheduler-scheduler.logs: '[{"source":"python","service":"workdload-scheduler"}]'
+        ad.datadoghq.com/tags: '{"appName":"workload-scheduler","component":"scheduler"}'
+        ad.datadoghq.com/workload-scheduler-scheduler.logs: '[{"source":"python","service":"workload-scheduler"}]'
     spec:
       serviceAccountName: {{ default (include "application.fullname" .) .Values.serviceAccount.name }}
       containers:
