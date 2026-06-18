@@ -1,5 +1,25 @@
 {
-    "workbench.colorTheme": "Default Dark Modern",
-    "window.autoDetectColorScheme": false,
-    "window.closeWhenEmpty": true
+  "workbench.colorTheme": "Winter is Coming (Light - No Italics)",
+  "window.closeWhenEmpty": true,
+  "peacock.color": "#f8bf7c",
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#fad6ac",
+    "activityBar.background": "#fad6ac",
+    "activityBar.foreground": "#15202b",
+    "activityBar.inactiveForeground": "#15202b99",
+    "activityBarBadge.background": "#f5a74b",
+    "activityBarBadge.foreground": "#15202b",
+    "commandCenter.border": "#15202b99",
+    "sash.hoverBorder": "#fad6ac",
+    "statusBar.background": "#f8bf7c",
+    "statusBar.foreground": "#15202b",
+    "statusBarItem.hoverBackground": "#f5a74b",
+    "statusBarItem.remoteBackground": "#f8bf7c",
+    "statusBarItem.remoteForeground": "#15202b",
+    "titleBar.activeBackground": "#f8bf7c",
+    "titleBar.activeForeground": "#15202b",
+    "titleBar.inactiveBackground": "#f8bf7c99",
+    "titleBar.inactiveForeground": "#15202b99"
+  },
+  "window.title": "🟠 public · workload-scheduler ${separator}${activeEditorShort}"
 }
