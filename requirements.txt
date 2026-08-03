@@ -78,7 +78,7 @@ UnleashClient==6.2.0
 urllib3==2.6.3
 uvicorn==0.32.0
 uvloop==0.21.0
-virtualenv==20.30.0
+virtualenv==20.36.1
 watchfiles==1.0.5
 websocket-client==1.8.0
 websockets==15.0.1
